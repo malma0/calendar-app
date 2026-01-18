@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <!-- PWA мета-теги -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-title" content="Календарь">
+    
+    <!-- Иконки -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📅</text></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📅</text></svg>">
+    
+    <!-- Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Подключаем CSS -->
+    <link rel="stylesheet" href="css/style.css">
+    
+    <title>Календарь совместных планов</title>
+</head>
+<body>
+    <!-- Подсказка long press -->
+    <div class="long-press-hint" id="longPressHint">
+        ✨ Зажмите день для добавления события
+    </div>
+
+    <!-- Мобильная боковая панель -->
+    <div class="mobile-sidebar" id="mobileSidebar">
+        <button class="close-sidebar" id="closeSidebar">×</button>
+        
+        <div class="group-header">
+            <div class="group-title">Группа "Друзья"</div>
+            <div class="group-subtitle">3 участника</div>
+        </div>
+        
+        <div class="members-section">
+            <div class="members-title">Участники</div>
+            <div class="member">
+                <div class="member-color" style="background: #007AFF"></div>
+                <span class="member-name">Вы</span>
+            </div>
+            <div class="member">
+                <div class="member-color" style="background: #FF3B30"></div>
+                <span class="member-name">Друг 1</span>
+            </div>
+            <div class="member">
+                <div class="member-color" style="background: #34C759"></div>
+                <span class="member-name">Друг 2</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Главный контейнер -->
+    <div class="app-container">
+        <!-- Боковая панель для десктопа -->
+        <aside class="sidebar">
+            <div class="group-header">
+                <div class="group-title">Группа "Друзья"</div>
+                <div class="group-subtitle">3 участника</div>
+            </div>
+            
+            <div class="members-section">
+                <div class="members-title">Участники</div>
+                <div class="member">
+                    <div class="member-color" style="background: #007AFF"></div>
+                    <span class="member-name">Вы</span>
+                </div>
+                <div class="member">
+                    <div class="member-color" style="background: #FF3B30"></div>
+                    <span class="member-name">Друг 1</span>
+                </div>
+                <div class="member">
+                    <div class="member-color" style="background: #34C759"></div>
+                    <span class="member-name">Друг 2</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Основной контент -->
+        <main class="main-content">
+            <!-- Шапка -->
+            <header class="header">
+                <button class="menu-toggle" id="menuToggle">☰</button>
+                <h1 class="month-year" id="monthYear">Январь 2026</h1>
+                <div class="controls">
+                    <button class="control-btn" id="prevMonth">‹</button>
+                    <button class="today-btn" id="todayBtn">Сегодня</button>
+                    <button class="control-btn" id="nextMonth">›</button>
+                </div>
+            </header>
+
+            <!-- Календарь -->
+            <div class="calendar-section">
+                <!-- Дни недели -->
+                <div class="weekdays">
+                    <div class="weekday">ПН</div>
+                    <div class="weekday">ВТ</div>
+                    <div class="weekday">СР</div>
+                    <div class="weekday">ЧТ</div>
+                    <div class="weekday">ПТ</div>
+                    <div class="weekday weekend">СБ</div>
+                    <div class="weekday weekend">ВС</div>
+                </div>
+
+                <!-- Сетка дней -->
+                <div class="days-grid" id="daysGrid">
+                    <!-- Дни появятся через JS -->
+                </div>
+            </div>
+
+            <!-- События дня -->
+            <div class="day-events">
+                <h3>События <span id="selectedDate">16 апреля</span></h3>
+                <div class="events-list" id="eventsList">
+                    <!-- События появятся через JS -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Модальное окно добавления события -->
+    <div class="modal-overlay" id="addEventModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Новое событие</h3>
+                <button class="close-modal" id="closeEventModal">×</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 20px; color: #8e8e93;">
+                    Дата: <span id="modalDate" style="color: #007AFF; font-weight: 600;"></span>
+                </p>
+                <form id="eventForm">
+                    <div class="form-group">
+                        <label for="eventTitle">Название события:</label>
+                        <input type="text" id="eventTitle" placeholder="Например: Встреча с друзьями" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventDate">Дата:</label>
+                        <input type="date" id="eventDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventTimeStart">Время начала:</label>
+                        <input type="time" id="eventTimeStart">
+                    </div>
+                    <div class="form-group">
+                        <label for="eventTimeEnd">Время окончания:</label>
+                        <input type="time" id="eventTimeEnd">
+                    </div>
+                    <button type="submit" class="btn" style="width: 100%; padding: 14px; margin-top: 20px;">
+                        Добавить событие
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Подключаем JavaScript -->
+    <script src="js/app.js"></script>
+</body>
+</html>
