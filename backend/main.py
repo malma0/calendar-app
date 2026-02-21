@@ -1,188 +1,184 @@
-from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
-from typing import List
-import secrets
+from __future__ import annotations
 
-from database import SessionLocal, engine, get_db
+import uuid
+from datetime import date as dt_date, timedelta
+from typing import List, Optional
+
+from fastapi import FastAPI, Depends, HTTPException, status, Query
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.orm import Session
+
 import models
 import schemas
-from auth import (
-    get_password_hash, verify_password,
-    create_access_token, get_current_user
-)
+from auth import get_password_hash, verify_password, create_access_token, get_current_user
+from database import engine, get_db
 
-# Создаём таблицы
 models.Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Календарь совместных планов API")
+app = FastAPI(title="Календарь совместных планов API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8080", "http://127.0.0.1:8080"],
+    allow_origins=[
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-# Регистрация пользователя
+# ===== AUTH =====
 @app.post("/api/register", response_model=schemas.UserResponse)
 def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    # Проверяем, существует ли пользователь
-    db_user = db.query(models.User).filter(
-        (models.User.email == user.email) | 
-        (models.User.username == user.username)
-    ).first()
-    
-    if db_user:
-        raise HTTPException(
-            status_code=400,
-            detail="Email или имя пользователя уже заняты"
-        )
-    
-    # Создаём нового пользователя
-    hashed_password = get_password_hash(user.password)
+    exists = (
+        db.query(models.User)
+        .filter((models.User.email == user.email) | (models.User.username == user.username))
+        .first()
+    )
+    if exists:
+        raise HTTPException(status_code=400, detail="Email или имя пользователя уже заняты")
+
     db_user = models.User(
         email=user.email,
         username=user.username,
         full_name=user.full_name,
-        hashed_password=hashed_password
+        hashed_password=get_password_hash(user.password),
     )
-    
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
-    
     return db_user
 
-# Вход
+
 @app.post("/api/token", response_model=schemas.Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db),
+):
+    # OAuth2PasswordRequestForm использует поле "username" (мы кладем туда username)
     user = db.query(models.User).filter(models.User.username == form_data.username).first()
-    
+
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Неверное имя пользователя или пароль",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
-    access_token_expires = timedelta(minutes=30)
-    access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
-    
-    return {"access_token": access_token, "token_type": "bearer"}
 
-# Получить текущего пользователя
+    token = create_access_token(
+        data={"sub": user.username},
+        expires_delta=timedelta(minutes=30),
+    )
+    return schemas.Token(access_token=token)
+
+
 @app.get("/api/users/me", response_model=schemas.UserResponse)
 def read_users_me(current_user: models.User = Depends(get_current_user)):
     return current_user
 
-# Создать событие
-@app.post("/api/events", response_model=schemas.EventResponse)
-def create_event(
-    event: schemas.EventCreate,
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    # Проверяем, что группа существует и пользователь в ней
-    group = db.query(models.Group).filter(
-        models.Group.id == event.group_id,
-        models.Group.members.any(id=current_user.id)
-    ).first()
-    
-    if not group:
-        raise HTTPException(status_code=404, detail="Группа не найдена или вы не состоите в ней")
-    
-    db_event = models.Event(
-        **event.dict(),
-        user_id=current_user.id
-    )
-    
-    db.add(db_event)
-    db.commit()
-    db.refresh(db_event)
-    
-    return db_event
 
-# Получить события за месяц
-@app.get("/api/events", response_model=List[schemas.EventResponse])
-def get_events(
-    group_id: int = None,
-    year: int = None,
-    month: int = None,
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    query = db.query(models.Event).join(models.Group).filter(
-        models.Group.members.any(id=current_user.id)
-    )
-    
-    if group_id:
-        query = query.filter(models.Event.group_id == group_id)
-    
-    if year and month:
-        # Фильтруем по месяцу
-        query = query.filter(
-            models.Event.date >= f"{year}-{month:02d}-01",
-            models.Event.date < f"{year}-{month+1:02d}-01" if month < 12 else f"{year+1}-01-01"
-        )
-    
-    events = query.order_by(models.Event.date, models.Event.start_time).all()
-    return events
-
-# Создать группу
+# ===== GROUPS =====
 @app.post("/api/groups", response_model=schemas.GroupResponse)
 def create_group(
     group: schemas.GroupCreate,
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    import uuid
-    
     db_group = models.Group(
         name=group.name,
         description=group.description,
         invite_code=str(uuid.uuid4())[:8].upper(),
-        owner_id=current_user.id
+        owner_id=current_user.id,
     )
-    
     db.add(db_group)
     db.commit()
     db.refresh(db_group)
-    
-    # Добавляем создателя в группу
+
+    # добавляем создателя в участники
     db_group.members.append(current_user)
     db.commit()
-    
+    db.refresh(db_group)
     return db_group
 
-# Получить мои группы
+
 @app.get("/api/groups", response_model=List[schemas.GroupResponse])
 def get_my_groups(
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    groups = db.query(models.Group).filter(
-        models.Group.members.any(id=current_user.id)
-    ).all()
-    
-    return groups
+    return db.query(models.Group).filter(models.Group.members.any(id=current_user.id)).all()
 
-# Тестовые роуты
+
+# ===== EVENTS =====
+@app.post("/api/events", response_model=schemas.EventResponse)
+def create_event(
+    event: schemas.EventCreate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    # группа существует и пользователь участник
+    group = (
+        db.query(models.Group)
+        .filter(models.Group.id == event.group_id, models.Group.members.any(id=current_user.id))
+        .first()
+    )
+    if not group:
+        raise HTTPException(status_code=404, detail="Группа не найдена или вы не состоите в ней")
+
+    # валидация времени
+    if event.start_time and event.end_time and event.start_time >= event.end_time:
+        raise HTTPException(status_code=400, detail="end_time должно быть позже start_time")
+
+    db_event = models.Event(
+        title=event.title,
+        description=event.description,
+        date=event.date,
+        start_time=event.start_time,
+        end_time=event.end_time,
+        user_id=current_user.id,
+        group_id=event.group_id,
+    )
+
+    db.add(db_event)
+    db.commit()
+    db.refresh(db_event)
+    return db_event
+
+
+@app.get("/api/events", response_model=List[schemas.EventResponse])
+def get_events(
+    group_id: Optional[int] = Query(default=None),
+    year: Optional[int] = Query(default=None, ge=1900, le=3000),
+    month: Optional[int] = Query(default=None, ge=1, le=12),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    # только группы, где пользователь состоит
+    q = db.query(models.Event).join(models.Group).filter(models.Group.members.any(id=current_user.id))
+
+    if group_id is not None:
+        q = q.filter(models.Event.group_id == group_id)
+
+    if year is not None and month is not None:
+        start = dt_date(year, month, 1)
+        if month == 12:
+            end = dt_date(year + 1, 1, 1)
+        else:
+            end = dt_date(year, month + 1, 1)
+        q = q.filter(models.Event.date >= start, models.Event.date < end)
+
+    return q.order_by(models.Event.date.asc(), models.Event.start_time.asc().nulls_last()).all()
+
+
+# ===== HEALTH =====
 @app.get("/")
 def read_root():
     return {"message": "Календарь совместных планов API работает!"}
 
+
 @app.get("/api/health")
 def health_check():
     return {"status": "healthy", "database": "SQLite"}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)

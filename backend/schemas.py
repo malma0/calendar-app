@@ -1,66 +1,75 @@
-from pydantic import BaseModel
-from datetime import date, time, datetime
-from typing import Optional
+from __future__ import annotations
 
-# Схемы для пользователей
+from datetime import date, time, datetime
+from typing import Optional, List
+
+from pydantic import BaseModel, EmailStr, Field
+
+
+# ===== USERS =====
 class UserBase(BaseModel):
-    email: str
-    username: str
+    email: EmailStr
+    username: str = Field(min_length=3, max_length=50)
     full_name: Optional[str] = None
 
-class UserCreate(UserBase):
-    password: str
 
-class UserLogin(BaseModel):
-    username: str
-    password: str
+class UserCreate(UserBase):
+    password: str = Field(min_length=6, max_length=128)
+
 
 class UserResponse(UserBase):
     id: int
     color: str
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
-# Схемы для событий
-class EventBase(BaseModel):
-    title: str
-    description: Optional[str] = None
-    date: date
-    start_time: Optional[time] = None
-    end_time: Optional[time] = None
 
-class EventCreate(EventBase):
-    group_id: int
-
-class EventResponse(EventBase):
-    id: int
-    user_id: int
-    group_id: int
-    created_at: datetime
-    
-    class Config:
-        from_attributes = True
-
-# Схемы для групп
+# ===== GROUPS =====
 class GroupBase(BaseModel):
-    name: str
+    name: str = Field(min_length=1, max_length=120)
     description: Optional[str] = None
+
 
 class GroupCreate(GroupBase):
     pass
+
 
 class GroupResponse(GroupBase):
     id: int
     owner_id: int
     invite_code: str
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
-# Токены
+
+# ===== EVENTS =====
+class EventBase(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    description: Optional[str] = None
+    date: date
+    start_time: Optional[time] = None
+    end_time: Optional[time] = None
+
+
+class EventCreate(EventBase):
+    group_id: int
+
+
+class EventResponse(EventBase):
+    id: int
+    user_id: int
+    group_id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ===== TOKEN =====
 class Token(BaseModel):
     access_token: str
-    token_type: str
+    token_type: str = "bearer"

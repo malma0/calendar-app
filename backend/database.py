@@ -1,13 +1,21 @@
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from __future__ import annotations
 
-# SQLite - файл базы данных в папке проекта
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
+
 DATABASE_URL = "sqlite:///./calendar.db"
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": True})
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False},  # важно для FastAPI+SQLite
+)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
+
+
+class Base(DeclarativeBase):
+    pass
+
 
 def get_db():
     db = SessionLocal()
