@@ -1,185 +1,200 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
-  />
-
-  <!-- PWA мета-теги -->
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="theme-color" content="#000000" />
-  <meta name="apple-mobile-web-app-title" content="Календарь" />
-
-  <!-- Иконки -->
-  <link
-    rel="icon"
-    href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">📅</text></svg>'
-  />
-  <link
-    rel="apple-touch-icon"
-    href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">📅</text></svg>'
-  />
-
-  <!-- Manifest -->
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <link rel="manifest" href="manifest.json" />
-
-  <!-- CSS (пути оставил как у тебя) -->
   <link rel="stylesheet" href="css/style.css" />
-
-  <title>Календарь совместных планов</title>
+  <title>Calendar App</title>
+  <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 
 <body>
-  <!-- Подсказка long press -->
-  <div class="long-press-hint" id="longPressHint">✨ Зажмите день для добавления события</div>
+  <div class="app">
 
-  <!-- Мобильная боковая панель -->
-  <div class="mobile-sidebar" id="mobileSidebar">
-    <button class="close-sidebar" id="closeSidebar" type="button">×</button>
+    <!-- ===== PAGES ===== -->
+    <main class="pages">
 
-    <div class="group-header">
-      <div class="group-title">Группа "Друзья"</div>
-      <div class="group-subtitle">3 участника</div>
-    </div>
+      <!-- Friends -->
+      <section class="page" id="page-friends" hidden>
+        <header class="page-header">
+          <div class="page-title">Друзья</div>
+          <div class="page-sub">Группы и участники</div>
+        </header>
 
-    <div class="members-section">
-      <div class="members-title">Участники</div>
-
-      <div class="member">
-        <div class="member-color" style="background: #007AFF"></div>
-        <span class="member-name">Вы</span>
-      </div>
-
-      <div class="member">
-        <div class="member-color" style="background: #FF3B30"></div>
-        <span class="member-name">Друг 1</span>
-      </div>
-
-      <div class="member">
-        <div class="member-color" style="background: #34C759"></div>
-        <span class="member-name">Друг 2</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="sidebar-overlay" id="sidebarOverlay"></div>
-
-  <!-- Главный контейнер -->
-  <div class="app-container">
-    <!-- Боковая панель для десктопа -->
-    <aside class="sidebar">
-      <div class="group-header">
-        <div class="group-title">Группа "Друзья"</div>
-        <div class="group-subtitle">3 участника</div>
-      </div>
-
-      <div class="members-section">
-        <div class="members-title">Участники</div>
-
-        <div class="member">
-          <div class="member-color" style="background: #007AFF"></div>
-          <span class="member-name">Вы</span>
-        </div>
-
-        <div class="member">
-          <div class="member-color" style="background: #FF3B30"></div>
-          <span class="member-name">Друг 1</span>
-        </div>
-
-        <div class="member">
-          <div class="member-color" style="background: #34C759"></div>
-          <span class="member-name">Друг 2</span>
-        </div>
-      </div>
-    </aside>
-
-    <!-- Основной контент -->
-    <main class="main-content">
-      <!-- Шапка -->
-      <header class="header">
-        <button class="menu-toggle" id="menuToggle" type="button">☰</button>
-
-        <h1 class="month-year" id="monthYear">—</h1>
-
-        <div class="controls">
-          <button class="control-btn" id="prevMonth" type="button">‹</button>
-          <button class="today-btn" id="todayBtn" type="button">Сегодня</button>
-          <button class="control-btn" id="nextMonth" type="button">›</button>
-        </div>
-      </header>
-
-      <!-- Календарь -->
-      <div class="calendar-section">
-        <!-- Дни недели -->
-        <div class="weekdays">
-          <div class="weekday">ПН</div>
-          <div class="weekday">ВТ</div>
-          <div class="weekday">СР</div>
-          <div class="weekday">ЧТ</div>
-          <div class="weekday">ПТ</div>
-          <div class="weekday weekend">СБ</div>
-          <div class="weekday weekend">ВС</div>
-        </div>
-
-        <!-- Сетка дней -->
-        <div class="days-grid" id="daysGrid"></div>
-      </div>
-
-      <!-- События дня -->
-      <div class="day-events" id="dayEvents">
-        <h3>События <span id="selectedDate">—</span></h3>
-        <div class="events-list" id="eventsList"></div>
-      </div>
-    </main>
-  </div>
-
-  <!-- Модальное окно добавления события -->
-  <div class="modal-overlay" id="addEventModal" aria-hidden="true">
-    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-      <div class="modal-header">
-        <h3 id="modalTitle">Новое событие</h3>
-        <button class="close-modal" id="closeEventModal" type="button">×</button>
-      </div>
-
-      <div class="modal-body">
-        <p style="margin-bottom: 20px; color: #8e8e93;">
-          Дата: <span id="modalDate" style="color: #007AFF; font-weight: 600;"></span>
-        </p>
-
-        <form id="eventForm">
-          <div class="form-group">
-            <label for="eventTitle">Название события:</label>
-            <input type="text" id="eventTitle" placeholder="Например: Встреча с друзьями" required />
+        <div class="card hero">
+          <div class="hero-badge">GROUP</div>
+          <div class="hero-title">Группа “Друзья”</div>
+          <div class="hero-sub">3 участника · общий календарь</div>
+          <div class="hero-actions">
+            <button class="chip">Пригласить</button>
+            <button class="chip chip-ghost">Цвета</button>
           </div>
+        </div>
 
-          <div class="form-group">
-            <label for="eventDate">Дата:</label>
-            <input type="date" id="eventDate" required />
-          </div>
-
-          <div class="form-group">
-            <label for="eventTimeStart">Время начала:</label>
-            <input type="time" id="eventTimeStart" />
-          </div>
-
-          <div class="form-group">
-            <label for="eventTimeEnd">Время окончания:</label>
-            <input type="time" id="eventTimeEnd" />
-          </div>
-
-          <button type="submit" class="btn" style="width: 100%; padding: 14px; margin-top: 20px;">
-            Добавить событие
+        <div class="card list">
+          <button class="list-row">
+            <span class="row-ico">👥</span>
+            <span class="row-text">Участники</span>
+            <span class="row-arrow">›</span>
           </button>
-        </form>
+          <button class="list-row">
+            <span class="row-ico">🔗</span>
+            <span class="row-text">Приглашения</span>
+            <span class="row-arrow">›</span>
+          </button>
+          <button class="list-row">
+            <span class="row-ico">🗓️</span>
+            <span class="row-text">Группы</span>
+            <span class="row-arrow">›</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Calendar -->
+      <section class="page" id="page-calendar">
+        <header class="topbar">
+          <button class="icon-btn" id="prevMonth" aria-label="Предыдущий месяц">
+            <span class="ico">‹</span>
+          </button>
+
+          <div class="topbar-center">
+            <div class="monthTitle" id="monthTitle">Февраль</div>
+            <div class="yearTitle" id="yearTitle">2026</div>
+          </div>
+
+          <button class="pill-btn" id="todayBtn">Сегодня</button>
+
+          <button class="icon-btn icon-btn-right" id="nextMonth" aria-label="Следующий месяц">
+            <span class="ico">›</span>
+          </button>
+        </header>
+
+        <div class="calendar">
+          <div class="weekdays">
+            <div class="weekday">ПН</div>
+            <div class="weekday">ВТ</div>
+            <div class="weekday">СР</div>
+            <div class="weekday">ЧТ</div>
+            <div class="weekday">ПТ</div>
+            <div class="weekday weekend">СБ</div>
+            <div class="weekday weekend">ВС</div>
+          </div>
+
+          <div class="month-grid" id="daysGrid"></div>
+        </div>
+      </section>
+
+      <!-- Profile -->
+      <section class="page" id="page-profile" hidden>
+        <header class="page-header profile-header">
+          <div class="avatar">🦈</div>
+          <div>
+            <div class="page-title">matthew mal</div>
+            <div class="page-sub">Профиль и настройки</div>
+          </div>
+        </header>
+
+        <div class="card hero hero-gold">
+          <div class="hero-badge">PREMIUM</div>
+          <div class="hero-title">Собирайте планы вместе</div>
+          <div class="hero-sub">Группы · цвета · напоминания</div>
+          <div class="hero-actions">
+            <button class="chip">Друзья</button>
+            <button class="chip">Цвета</button>
+            <button class="chip">Иконки</button>
+          </div>
+        </div>
+
+        <div class="card list">
+          <button class="list-row">
+            <span class="row-ico">👥</span>
+            <span class="row-text">Друзья</span>
+            <span class="row-arrow">›</span>
+          </button>
+          <button class="list-row">
+            <span class="row-ico">🔔</span>
+            <span class="row-text">Уведомления</span>
+            <span class="row-arrow">›</span>
+          </button>
+          <button class="list-row">
+            <span class="row-ico">⚙️</span>
+            <span class="row-text">Настройки</span>
+            <span class="row-arrow">›</span>
+          </button>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ===== SHEETS ===== -->
+    <div class="sheet-backdrop" id="sheetBackdrop" hidden></div>
+
+    <!-- Busy sheet -->
+    <div class="sheet" id="busySheet" aria-hidden="true">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title" id="busyTitle">Занятость</div>
+        <button class="sheet-close" id="closeBusy" type="button" aria-label="Закрыть">×</button>
+      </div>
+      <div class="sheet-body">
+        <div class="busy-list" id="busyList"></div>
       </div>
     </div>
+
+    <!-- Add sheet -->
+    <div class="sheet" id="addSheet" aria-hidden="true">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">Новое событие</div>
+        <button class="sheet-close" id="closeAdd" type="button" aria-label="Закрыть">×</button>
+      </div>
+      <div class="sheet-body">
+        <div class="field">
+          <label for="eventTitle">Название</label>
+          <input id="eventTitle" placeholder="Например: встреча" />
+        </div>
+
+        <div class="field">
+          <label for="eventDate">Дата</label>
+          <input id="eventDate" />
+        </div>
+
+        <div class="field-row">
+          <div class="field" style="flex:1">
+            <label for="eventTimeStart">Начало</label>
+            <input id="eventTimeStart" placeholder="12:00" />
+          </div>
+          <div class="field" style="flex:1">
+            <label for="eventTimeEnd">Конец</label>
+            <input id="eventTimeEnd" placeholder="13:30" />
+          </div>
+        </div>
+
+        <button class="primary-btn" id="saveEventBtn">Сохранить</button>
+      </div>
+    </div>
+
+    <!-- ===== TABBAR ===== -->
+<nav class="tabbar" role="tablist" aria-label="Навигация">
+    <button class="tab" data-tab="friends" aria-selected="false">
+    <i data-lucide="users" class="tab-ico"></i>
+    <span class="tab-label">Друзья</span>
+  </button>
+
+  <button class="tab active" data-tab="calendar" aria-selected="true">
+    <i data-lucide="calendar-days" class="tab-ico"></i>
+    <span class="tab-label">Календарь</span>
+  </button>
+
+  <button class="tab" data-tab="profile" aria-selected="false">
+    <i data-lucide="user" class="tab-ico"></i>
+    <span class="tab-label">Профиль</span>
+  </button>
+</nav>
+
   </div>
 
-  <!-- JS (пути оставил как у тебя) -->
   <script src="js/app.js"></script>
 </body>
 </html>

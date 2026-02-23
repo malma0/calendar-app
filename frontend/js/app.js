@@ -1,482 +1,386 @@
 (() => {
   "use strict";
 
-  // ====== CONFIG ======
-  const STORAGE_KEY = "calendar_app_events_v1";
-  const LONG_PRESS_MS = 520;
-  const isTouchLike = matchMedia("(pointer: coarse)").matches || "ontouchstart" in window;
+  const STORAGE_KEY = "calendar_events_v4";
 
-  // Демо-участники (пока статично, дизайн не трогаем)
+  // Временно демо-участники. Потом подцепим из бэка группы.
   const MEMBERS = [
-    { id: "me", name: "Вы", color: "#007AFF", initial: "В" },
-    { id: "f1", name: "Друг 1", color: "#FF3B30", initial: "Д1" },
-    { id: "f2", name: "Друг 2", color: "#34C759", initial: "Д2" },
+    { id: "me", name: "Вы", color: "#4d7cff" },
+    { id: "f1", name: "Друг 1", color: "#ff5a52" },
+    { id: "f2", name: "Друг 2", color: "#37d67a" },
   ];
 
-  // ====== STATE ======
+  // Пока: текущий пользователь = Вы
+  const CURRENT_USER_ID = "me";
+
+  const LONG_PRESS_MS = 520;
+
   const state = {
-    current: new Date(),
-    selected: new Date(),
+    currentMonth: startOfMonth(new Date()),
+    selectedDate: startOfDay(new Date()),
     pressTimer: null,
-    pressedEl: null,
-    pressedDate: null,
+    touchStartX: null,
+    touchStartY: null,
+    activeTab: "calendar",
   };
 
-  // ====== DOM ======
   const $ = (id) => document.getElementById(id);
 
-  const dom = {
-    monthYear: $("monthYear"),
-    daysGrid: $("daysGrid"),
-    selectedDate: $("selectedDate"),
-    eventsList: $("eventsList"),
-    dayEvents: $("dayEvents"),
+  function pad2(n){ return String(n).padStart(2,"0"); }
+  function isoDate(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+  function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
+  function startOfDay(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
 
-    prevMonth: $("prevMonth"),
-    nextMonth: $("nextMonth"),
-    todayBtn: $("todayBtn"),
+  function monthNameRu(d){
+    const m = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
+    return m[d.getMonth()];
+  }
 
-    addEventModal: $("addEventModal"),
-    modalDate: $("modalDate"),
-    closeEventModal: $("closeEventModal"),
-    eventForm: $("eventForm"),
-    eventTitle: $("eventTitle"),
-    eventDate: $("eventDate"),
-    eventTimeStart: $("eventTimeStart"),
-    eventTimeEnd: $("eventTimeEnd"),
+  function escapeHtml(str){
+    return String(str)
+      .replaceAll("&","&amp;").replaceAll("<","&lt;")
+      .replaceAll(">","&gt;").replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
 
-    longPressHint: $("longPressHint"),
+  function formatTimeRange(s,e){
+    const a = (s||"").trim();
+    const b = (e||"").trim();
+    if(!a && !b) return "Весь день";
+    if(a && !b) return `${a} – ?`;
+    if(!a && b) return `? – ${b}`;
+    return `${a} – ${b}`;
+  }
 
-    menuToggle: $("menuToggle"),
-    mobileSidebar: $("mobileSidebar"),
-    sidebarOverlay: $("sidebarOverlay"),
-    closeSidebar: $("closeSidebar"),
-  };
-
-  // ====== STORAGE ======
-  function loadEvents() {
-    try {
+  function loadEvents(){
+    try{
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
+      if(!raw) return [];
+      const data = JSON.parse(raw);
+      return Array.isArray(data) ? data : [];
+    }catch{
       return [];
     }
   }
+  function saveEvents(list){ localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }
+  function addEvent(ev){ const all = loadEvents(); all.push(ev); saveEvents(all); }
 
-  function saveEvents(events) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+  function eventsForIso(iso){
+    return loadEvents()
+      .filter(e => e.date === iso)
+      .sort((a,b) => (a.start_time||"").localeCompare(b.start_time||""));
   }
 
-  function addEvent(event) {
-    const events = loadEvents();
-    events.push(event);
-    saveEvents(events);
+  function busyUsersForIso(iso){
+    const set = new Set(eventsForIso(iso).map(e => e.user_id));
+    return [...set];
   }
 
-  function getEventsByISODate(isoDate) {
-    const events = loadEvents().filter((e) => e.date === isoDate);
-    // сортировка по start_time, затем title
-    return events.sort((a, b) => {
-      const ta = a.start_time || "";
-      const tb = b.start_time || "";
-      if (ta !== tb) return ta.localeCompare(tb);
-      return (a.title || "").localeCompare(b.title || "");
+  function isSameDay(a,b){
+    return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+  }
+
+  // ===== Tabs =====
+  function setTab(tab){
+    state.activeTab = tab;
+
+    const pages = {
+      friends: $("page-friends"),
+      calendar: $("page-calendar"),
+      profile: $("page-profile"),
+    };
+
+    // убрать/поставить активный класс
+    Object.entries(pages).forEach(([key, el]) => {
+      if(!el) return;
+      el.classList.toggle("is-active", key === tab);
     });
+
+    // табы
+    document.querySelectorAll(".tab").forEach(btn => {
+      const isActive = btn.dataset.tab === tab;
+      btn.classList.toggle("active", isActive);
+      btn.setAttribute("aria-selected", isActive ? "true" : "false");
+    });
+
+    closeAllSheets();
+}
+
+  // ===== Calendar rendering =====
+  function renderHeader(){
+    $("monthTitle").textContent = monthNameRu(state.currentMonth);
+    $("yearTitle").textContent = String(state.currentMonth.getFullYear());
   }
 
-  // ====== DATE HELPERS ======
-  function pad2(n) {
-    return String(n).padStart(2, "0");
-  }
+  function renderMonth(){
+    renderHeader();
 
-  function toISODate(d) {
-    const year = d.getFullYear();
-    const month = pad2(d.getMonth() + 1);
-    const day = pad2(d.getDate());
-    return `${year}-${month}-${day}`;
-  }
+    const grid = $("daysGrid");
+    grid.innerHTML = "";
 
-  function sameDay(a, b) {
-    return (
-      a.getFullYear() === b.getFullYear() &&
-      a.getMonth() === b.getMonth() &&
-      a.getDate() === b.getDate()
-    );
-  }
+    const y = state.currentMonth.getFullYear();
+    const m = state.currentMonth.getMonth();
+    const first = new Date(y,m,1);
 
-  function formatDateRu(d) {
-    const monthNames = [
-      "января", "февраля", "марта", "апреля", "мая", "июня",
-      "июля", "августа", "сентября", "октября", "ноября", "декабря",
-    ];
-    const dayNames = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
-    const dayOfWeek = dayNames[d.getDay()];
-    return `${d.getDate()} ${monthNames[d.getMonth()]} (${dayOfWeek})`;
-  }
+    // Monday=1..Sunday=7
+    let dow = first.getDay();
+    if(dow === 0) dow = 7;
+    const prevDays = dow - 1;
 
-  function monthTitleRu(date) {
-    const monthNames = [
-      "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
-      "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
-    ];
-    return `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
-  }
+    const start = new Date(y,m,1 - prevDays);
 
-  // ====== UI ======
-  function showHint() {
-    if (!dom.longPressHint) return;
-    dom.longPressHint.classList.add("visible");
-    setTimeout(() => dom.longPressHint.classList.remove("visible"), 3000);
-  }
-
-  function setSelectedDate(date) {
-    state.selected = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    dom.selectedDate.textContent = formatDateRu(state.selected);
-  }
-
-  function showDayEvents() {
-    dom.dayEvents.classList.add("visible");
-  }
-
-  function hideDayEvents() {
-    dom.dayEvents.classList.remove("visible");
-  }
-
-  function renderNoEvents() {
-    dom.eventsList.innerHTML = `
-      <div class="event-card" style="border-left-color: var(--text-tertiary)">
-        <div class="event-time">Весь день</div>
-        <div class="event-title">Нет событий</div>
-        <div class="event-user">
-          <div class="user-avatar" style="background: var(--text-tertiary)">!</div>
-          <span>Зажмите день для добавления</span>
-        </div>
-      </div>
-    `;
-    showDayEvents();
-  }
-
-  function renderEventsForSelectedDay() {
-    const iso = toISODate(state.selected);
-    const events = getEventsByISODate(iso);
-
-    if (events.length === 0) {
-      renderNoEvents();
-      return;
-    }
-
-    dom.eventsList.innerHTML = "";
-    for (const ev of events) {
-      const member = MEMBERS.find((m) => m.id === ev.user_id) || MEMBERS[0];
-
-      const time = formatTimeRange(ev.start_time, ev.end_time);
-      const el = document.createElement("div");
-      el.className = "event-card";
-      el.style.borderLeftColor = member.color;
-      el.innerHTML = `
-        <div class="event-time">${escapeHtml(time)}</div>
-        <div class="event-title">${escapeHtml(ev.title)}</div>
-        <div class="event-user">
-          <div class="user-avatar" style="background: ${member.color}">${escapeHtml(member.initial)}</div>
-          <span>${escapeHtml(member.name)}</span>
-        </div>
-      `;
-      dom.eventsList.appendChild(el);
-    }
-
-    showDayEvents();
-  }
-
-  function formatTimeRange(start, end) {
-    const s = (start || "").trim();
-    const e = (end || "").trim();
-    if (!s && !e) return "Весь день";
-    if (s && !e) return `${s} – ?`;
-    if (!s && e) return `? – ${e}`;
-    return `${s} – ${e}`;
-  }
-
-  function escapeHtml(str) {
-    return String(str)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
-  }
-
-  // ====== CALENDAR RENDER ======
-  function renderCalendar() {
-    dom.monthYear.textContent = monthTitleRu(state.current);
-    dom.daysGrid.innerHTML = "";
-
-    const year = state.current.getFullYear();
-    const month = state.current.getMonth();
-
-    const first = new Date(year, month, 1);
-    const last = new Date(year, month + 1, 0);
-
-    // weekday: Mon=1..Sun=7
-    let firstDow = first.getDay();
-    if (firstDow === 0) firstDow = 7;
-
-    // days before month (prev month)
-    for (let i = firstDow - 1; i > 0; i--) {
-      const d = new Date(year, month, 1 - i);
-      dom.daysGrid.appendChild(createDayCell(d, true));
-    }
-
-    // current month days
-    for (let day = 1; day <= last.getDate(); day++) {
-      const d = new Date(year, month, day);
-      dom.daysGrid.appendChild(createDayCell(d, false));
-    }
-
-    // fill to 6 weeks (42)
-    const total = 42;
-    const used = (firstDow - 1) + last.getDate();
-    const remaining = total - used;
-    for (let i = 1; i <= remaining; i++) {
-      const d = new Date(year, month + 1, i);
-      dom.daysGrid.appendChild(createDayCell(d, true));
+    for(let i=0;i<42;i++){
+      const d = new Date(start.getFullYear(), start.getMonth(), start.getDate()+i);
+      const other = d.getMonth() !== m;
+      grid.appendChild(createDayCell(d, other));
     }
   }
 
-  function createDayCell(date, isOtherMonth) {
+  function createDayCell(date, otherMonth){
     const cell = document.createElement("div");
     cell.className = "day";
-    if (isOtherMonth) cell.classList.add("other-month");
+    if(otherMonth) cell.classList.add("other-month");
 
-    const iso = toISODate(date);
-    cell.dataset.date = iso;
+    const num = document.createElement("div");
+    num.className = "day-number";
+    num.textContent = String(date.getDate());
+    cell.appendChild(num);
 
     const today = new Date();
-    if (sameDay(date, today)) cell.classList.add("today");
+    if(isSameDay(date, today)) cell.classList.add("today");
+    if(isSameDay(date, state.selectedDate)) cell.classList.add("selected");
 
-    const number = document.createElement("div");
-    number.className = "day-number";
-    number.textContent = String(date.getDate());
-    cell.appendChild(number);
+    const indicator = document.createElement("div");
+    indicator.className = "busy-indicator";
+    cell.appendChild(indicator);
 
-    // индикатор (CSS у тебя скрывает display:none — дизайн не трогаем)
-    const eventsIndicator = document.createElement("div");
-    eventsIndicator.className = "events-indicator";
-    cell.appendChild(eventsIndicator);
+    const iso = isoDate(date);
+    const busyUsers = busyUsersForIso(iso);
 
-    // click selects day
-    cell.addEventListener("click", () => {
-      selectDayCell(cell, date);
-    });
-
-    // long press
-    attachLongPress(cell, date);
-
-    // если выбранный день в текущем месяце — подсветим при рендере
-    if (sameDay(date, state.selected)) {
-      cell.classList.add("selected");
+    if(busyUsers.length === 1){
+      const member = MEMBERS.find(m => m.id === busyUsers[0]) || MEMBERS[0];
+      const dot = document.createElement("div");
+      dot.className = "busy-dot";
+      dot.style.background = member.color;
+      indicator.appendChild(dot);
+    } else if(busyUsers.length >= 2){
+      const pill = document.createElement("div");
+      pill.className = "busy-pill";
+      busyUsers.slice(0,4).forEach(uid => {
+        const member = MEMBERS.find(m => m.id === uid) || MEMBERS[0];
+        const seg = document.createElement("div");
+        seg.className = "busy-seg";
+        seg.style.background = member.color;
+        pill.appendChild(seg);
+      });
+      indicator.appendChild(pill);
     }
 
-    // отметим, есть ли события (для логики показа событий)
-    const has = getEventsByISODate(iso).length > 0;
-    cell.dataset.hasEvents = has ? "true" : "false";
+    // tap -> open busy sheet
+    cell.addEventListener("click", () => {
+      state.selectedDate = startOfDay(date);
+      renderMonth();
+      openBusySheet(date);
+    });
+
+    // long press -> open add sheet
+    attachLongPress(cell, date);
 
     return cell;
   }
 
-  function selectDayCell(cell, date) {
-    document.querySelectorAll(".day.selected").forEach((d) => d.classList.remove("selected"));
-    cell.classList.add("selected");
-    setSelectedDate(date);
-
-    // показываем события
-    renderEventsForSelectedDay();
-  }
-
-  function attachLongPress(el, date) {
-    // На тач-устройствах используем pointer events, не блокируя скролл.
+  function attachLongPress(el, date){
     const onDown = (e) => {
-      // только ЛКМ или pointer touch/pen
-      if (e.pointerType === "mouse" && e.button !== 0) return;
-
-      state.pressedEl = el;
-      state.pressedDate = date;
-
+      if(e.pointerType === "mouse" && e.button !== 0) return;
       clearTimeout(state.pressTimer);
       state.pressTimer = setTimeout(() => {
         state.pressTimer = null;
-        openAddEventModal(date);
+        openAddSheet(date);
       }, LONG_PRESS_MS);
     };
-
     const cancel = () => {
-      if (state.pressTimer) clearTimeout(state.pressTimer);
+      if(state.pressTimer) clearTimeout(state.pressTimer);
       state.pressTimer = null;
-      state.pressedEl = null;
-      state.pressedDate = null;
     };
 
-    el.addEventListener("pointerdown", onDown, { passive: true });
-    el.addEventListener("pointerup", cancel, { passive: true });
-    el.addEventListener("pointercancel", cancel, { passive: true });
-    el.addEventListener("pointerleave", cancel, { passive: true });
-    el.addEventListener("pointermove", cancel, { passive: true });
+    el.addEventListener("pointerdown", onDown, {passive:true});
+    el.addEventListener("pointerup", cancel, {passive:true});
+    el.addEventListener("pointercancel", cancel, {passive:true});
+    el.addEventListener("pointerleave", cancel, {passive:true});
+    el.addEventListener("pointermove", cancel, {passive:true});
   }
 
-  // ====== MODAL ======
-  function openAddEventModal(date) {
-    setSelectedDate(date);
-    dom.modalDate.textContent = formatDateRu(date);
-    dom.eventDate.value = toISODate(date);
+  // swipe month on calendar grid
+  function bindSwipe(){
+    const area = $("daysGrid");
+    if(!area) return;
 
-    // сброс формы (кроме даты)
-    dom.eventTitle.value = "";
-    dom.eventTimeStart.value = "";
-    dom.eventTimeEnd.value = "";
+    area.addEventListener("touchstart", (e) => {
+      const t = e.touches[0];
+      state.touchStartX = t.clientX;
+      state.touchStartY = t.clientY;
+    }, {passive:true});
 
-    dom.addEventModal.classList.add("visible");
-    dom.addEventModal.setAttribute("aria-hidden", "false");
+    area.addEventListener("touchend", (e) => {
+      if(state.touchStartX == null || state.touchStartY == null) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - state.touchStartX;
+      const dy = t.clientY - state.touchStartY;
 
-    // фокус
-    setTimeout(() => dom.eventTitle.focus(), 0);
+      state.touchStartX = null;
+      state.touchStartY = null;
+
+      if(Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy)) return;
+
+      if(dx < 0) nextMonth();
+      else prevMonth();
+    }, {passive:true});
   }
 
-  function closeAddEventModal() {
-    dom.addEventModal.classList.remove("visible");
-    dom.addEventModal.setAttribute("aria-hidden", "true");
+  function prevMonth(){
+    state.currentMonth = startOfMonth(new Date(state.currentMonth.getFullYear(), state.currentMonth.getMonth()-1, 1));
+    renderMonth();
+  }
+  function nextMonth(){
+    state.currentMonth = startOfMonth(new Date(state.currentMonth.getFullYear(), state.currentMonth.getMonth()+1, 1));
+    renderMonth();
   }
 
-  // ====== MOBILE SIDEBAR ======
-  function openSidebar() {
-    dom.mobileSidebar.classList.add("active");
-    dom.sidebarOverlay.classList.add("active");
+  // ===== Sheets =====
+  function closeAllSheets(){
+    $("addSheet").classList.remove("open");
+    $("busySheet").classList.remove("open");
+    $("sheetBackdrop").hidden = true;
   }
 
-  function closeSidebar() {
-    dom.mobileSidebar.classList.remove("active");
-    dom.sidebarOverlay.classList.remove("active");
-  }
+  function openBusySheet(date){
+    const iso = isoDate(date);
+    const list = eventsForIso(iso);
 
-  // ====== EVENTS ======
-  function normalizeTime(t) {
-    const v = (t || "").trim();
-    if (!v) return null;
-    // ожидаем HH:MM
-    if (!/^\d{2}:\d{2}$/.test(v)) return null;
-    return v;
-  }
+    $("sheetBackdrop").hidden = false;
+    $("busySheet").classList.add("open");
 
-  function handleSubmitEventForm(e) {
-    e.preventDefault();
+    $("busyTitle").textContent = `${date.getDate()} ${monthNameRu(date)}`;
 
-    const title = dom.eventTitle.value.trim();
-    const date = dom.eventDate.value;
+    const container = $("busyList");
+    container.innerHTML = "";
 
-    if (!title) {
-      dom.eventTitle.focus();
+    if(list.length === 0){
+      container.innerHTML = `
+        <div class="busy-item">
+          <div class="busy-color" style="background: rgba(255,255,255,0.25)"></div>
+          <div class="busy-main">
+            <div class="busy-name">Нет занятости</div>
+            <div class="busy-sub">Долгий тап по дню — чтобы добавить событие</div>
+          </div>
+        </div>
+      `;
       return;
     }
-    if (!date) {
-      dom.eventDate.focus();
+
+    const byUser = new Map();
+    for(const ev of list){
+      if(!byUser.has(ev.user_id)) byUser.set(ev.user_id, []);
+      byUser.get(ev.user_id).push(ev);
+    }
+
+    for(const m of MEMBERS){
+      const items = byUser.get(m.id);
+      if(!items || items.length === 0) continue;
+
+      const lines = items
+        .map(ev => `${escapeHtml(formatTimeRange(ev.start_time, ev.end_time))} • ${escapeHtml(ev.title)}`)
+        .join("<br/>");
+
+      const row = document.createElement("div");
+      row.className = "busy-item";
+      row.innerHTML = `
+        <div class="busy-color" style="background:${m.color}"></div>
+        <div class="busy-main">
+          <div class="busy-name">${escapeHtml(m.name)}</div>
+          <div class="busy-sub">${lines}</div>
+        </div>
+      `;
+      container.appendChild(row);
+    }
+  }
+
+  function openAddSheet(date){
+    $("sheetBackdrop").hidden = false;
+    $("addSheet").classList.add("open");
+
+    $("eventTitle").value = "";
+    $("eventDate").value = isoDate(date);
+    $("eventTimeStart").value = "";
+    $("eventTimeEnd").value = "";
+  }
+
+  function normalizeTime(v){
+    const t = (v||"").trim();
+    if(!t) return null;
+    if(!/^\d{2}:\d{2}$/.test(t)) return null;
+    return t;
+  }
+
+  function saveFromAdd(){
+    const title = ($("eventTitle").value || "").trim();
+    const date = ($("eventDate").value || "").trim();
+    const start = normalizeTime($("eventTimeStart").value);
+    const end = normalizeTime($("eventTimeEnd").value);
+
+    if(!title){ $("eventTitle").focus(); return; }
+    if(!date){ $("eventDate").focus(); return; }
+    if(start && end && start >= end){
+      alert("Конец должен быть позже начала.");
+      $("eventTimeEnd").focus();
       return;
     }
 
-    const start = normalizeTime(dom.eventTimeStart.value);
-    const end = normalizeTime(dom.eventTimeEnd.value);
-
-    // валидация времени: если оба есть — start < end
-    if (start && end && start >= end) {
-      alert("Время окончания должно быть позже времени начала.");
-      dom.eventTimeEnd.focus();
-      return;
-    }
-
-    const ev = {
+    addEvent({
       id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+      user_id: CURRENT_USER_ID,
       title,
       date,
       start_time: start,
       end_time: end,
-      // пока всегда "Вы"
-      user_id: "me",
       created_at: new Date().toISOString(),
-    };
+    });
 
-    addEvent(ev);
-
-    closeAddEventModal();
-
-    // перерисуем календарь, чтобы клетки знали hasEvents
-    renderCalendar();
-
-    // подсветим выбранную дату и покажем список
-    setSelectedDate(new Date(date));
-    // найдём клетку даты и сделаем selected (после renderCalendar)
-    const cell = document.querySelector(`.day[data-date="${date}"]`);
-    if (cell) selectDayCell(cell, new Date(date));
-    else renderEventsForSelectedDay();
+    closeAllSheets();
+    renderMonth();
+    openBusySheet(new Date(date));
   }
 
-  // ====== INIT ======
-  function init() {
-    // init selected/current
-    const now = new Date();
-    state.current = new Date(now.getFullYear(), now.getMonth(), 1);
-    state.selected = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    setSelectedDate(state.selected);
-    renderCalendar();
-    hideDayEvents();
-
-    // hint
-    setTimeout(showHint, 900);
-
-    // month nav
-    dom.prevMonth.addEventListener("click", () => {
-      state.current = new Date(state.current.getFullYear(), state.current.getMonth() - 1, 1);
-      renderCalendar();
-      hideDayEvents();
+  function init(){
+    // tabs
+    document.querySelector(".tabbar")?.addEventListener("click", (e) => {
+      const btn = e.target.closest(".tab");
+      if(!btn) return;
+      setTab(btn.dataset.tab);
     });
+    setTab("calendar");
 
-    dom.nextMonth.addEventListener("click", () => {
-      state.current = new Date(state.current.getFullYear(), state.current.getMonth() + 1, 1);
-      renderCalendar();
-      hideDayEvents();
-    });
+    if (window.lucide) window.lucide.createIcons();
 
-    dom.todayBtn.addEventListener("click", () => {
+    // month controls
+    $("prevMonth").addEventListener("click", prevMonth);
+    $("nextMonth").addEventListener("click", nextMonth);
+    $("todayBtn").addEventListener("click", () => {
       const t = new Date();
-      state.current = new Date(t.getFullYear(), t.getMonth(), 1);
-      state.selected = new Date(t.getFullYear(), t.getMonth(), t.getDate());
-      setSelectedDate(state.selected);
-      renderCalendar();
-      hideDayEvents();
+      state.currentMonth = startOfMonth(t);
+      state.selectedDate = startOfDay(t);
+      renderMonth();
+      openBusySheet(t);
     });
 
-    // modal close
-    dom.closeEventModal.addEventListener("click", closeAddEventModal);
-    dom.addEventModal.addEventListener("click", (e) => {
-      if (e.target === dom.addEventModal) closeAddEventModal();
-    });
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && dom.addEventModal.classList.contains("visible")) {
-        closeAddEventModal();
-      }
-    });
+    // sheets
+    $("sheetBackdrop").addEventListener("click", closeAllSheets);
+    $("closeBusy").addEventListener("click", closeAllSheets);
+    $("closeAdd").addEventListener("click", closeAllSheets);
+    $("saveEventBtn").addEventListener("click", saveFromAdd);
 
-    // form submit
-    dom.eventForm.addEventListener("submit", handleSubmitEventForm);
-
-    // mobile sidebar
-    if (dom.menuToggle) dom.menuToggle.addEventListener("click", openSidebar);
-    if (dom.closeSidebar) dom.closeSidebar.addEventListener("click", closeSidebar);
-    if (dom.sidebarOverlay) dom.sidebarOverlay.addEventListener("click", closeSidebar);
-
-    // на touch устройствах делаем подсказку релевантнее
-    if (!isTouchLike && dom.longPressHint) {
-      dom.longPressHint.textContent = "✨ Зажмите (или удерживайте ЛКМ) день для добавления события";
-    }
+    renderMonth();
+    bindSwipe();
   }
 
   document.addEventListener("DOMContentLoaded", init);
