@@ -4,12 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="css/style.css?=7" />
-  <script type="module">
-  import { initFriends } from "./js/friends.js?v=999";
-  initFriends();
-</script>
-  <title>Calendar App</title>
+  <link rel="stylesheet" href="css/style.css?v=7" />
+<title>Calendar App</title>
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 
@@ -20,7 +16,7 @@
     <main class="pages">
 
       <!-- Friends -->
-      <section class="page" id="page-friends" hidden>
+      <section class="page is-active" id="page-friends" >
         <header class="page-header">
           <div class="page-title">Друзья</div>
           <div class="page-sub">Группы и участники</div>
@@ -31,13 +27,6 @@
           <div class="hero-title">Группа “Друзья”</div>
           <div class="hero-sub">3 участника · общий календарь</div>
         </div>
-
-        <div class="card hero">
-          <div class="hero-badge">GROUP</div>
-          <div class="hero-title">Группа “Друзья”</div>
-          <div class="hero-sub">3 участника · общий календарь</div>
-        </div>
-
         <div class="card list">
           <button class="list-row">
             <span class="row-ico">👥</span>
@@ -223,11 +212,12 @@
 
   </div>
 
-  <script src="js/app.js"></script>
+  <script src="js/app.js?v=9999"></script>
 
   <script type="module">
-    import { initFriends } from "./js/friends.js";
+    import { initFriends } from "./js/friends.js?v=9999";
     initFriends();
   </script>
+
 </body>
 </html>

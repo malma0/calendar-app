@@ -45,6 +45,8 @@ class GroupResponse(GroupBase):
     class Config:
         from_attributes = True
 
+class GroupUpdate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
 
 # ===== EVENTS =====
 class EventBase(BaseModel):

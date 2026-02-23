@@ -431,6 +431,30 @@ body{ -webkit-tap-highlight-color: transparent; }
   font-size: 16px;
 }
 
+/* iOS FIX: native date/time can "вылезать" и наезжать */
+.field input[type="time"],
+.field input[type="date"]{
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  display: block;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* iOS align date/time text */
+.field input[type="time"],
+.field input[type="date"]{
+  padding-top: 0px;
+  padding-bottom: 0px;
+  line-height: 45px;
+}
+
+.field input[type="time"]{
+  text-align: center;
+}
+
 .field-row{
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -524,54 +548,24 @@ body{ -webkit-tap-highlight-color: transparent; }
   .day{ border-radius: 20px; padding: 9px; }
 }
 
-/* FIX: Safari bottom bar overlaps clicks */
+/* ===== FINAL PAGE SWITCH (NO CONFLICTS) ===== */
 .page{
-  padding-bottom: calc(140px + env(safe-area-inset-bottom)); /* было 84px */
-}
-
-.tabbar{
-  bottom: calc(78px + env(safe-area-inset-bottom)); /* было 10px */
-}
-
-/* IMPORTANT: hidden backdrop must not intercept taps */
-.sheet-backdrop[hidden]{
-  display: none !important;
-}
-.tab-ico{
-  width: 22px;
-  height: 22px;
-  stroke-width: 2.2px;
-  opacity: .9;
-}
-.tab.active .tab-ico{
-  opacity: 1;
-}
-/* ===== PAGE SWITCH FIX ===== */
-.page{ display: none; }
-.page.is-active{ display: flex; }
-
-/* чтобы контент не упирался в таббар */
-.page{
+  display: none;
+  height: 100%;
+  flex-direction: column;
   padding-bottom: calc(90px + env(safe-area-inset-bottom));
 }
 
-/* таббар максимально вниз */
+.page.is-active{
+  display: flex;
+}
+
+/* tabbar stays at the bottom */
 .tabbar{
   bottom: calc(10px + env(safe-area-inset-bottom));
 }
 
-/* убрать любые "лишние" нижние отступы от Safari */
-.pages{ padding-bottom: 0 !important; }
-
-/* backdrop hidden = реально не существует (не ловит клики и не оставляет артефактов) */
-.sheet-backdrop[hidden]{ display:none !important; }
-
-.field-row .field{
-  flex: 1 1 0;   /* ключевое: одинаковая ширина */
-  min-width: 0;  /* ключевое: чтобы input не раздувал блок */
-}
-
-.field-row .field input{
-  width: 100%;
-  min-width: 0;  /* на всякий */
+/* IMPORTANT: hidden backdrop must not intercept taps */
+.sheet-backdrop[hidden]{
+  display:none !important;
 }
