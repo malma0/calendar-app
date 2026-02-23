@@ -308,6 +308,15 @@ body{ -webkit-tap-highlight-color: transparent; }
   gap: 10px;
 }
 
+/* GROUP CARD CLICKABLE */
+#groupCard{
+  cursor: pointer;
+}
+
+#groupCard:active{
+  transform: scale(0.99);
+}
+
 .chip{
   height: 36px;
   padding: 0 12px;
@@ -422,7 +431,22 @@ body{ -webkit-tap-highlight-color: transparent; }
   font-size: 16px;
 }
 
-.field-row{ display:flex; gap: 10px; }
+.field-row{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.field-row .field{
+  min-width: 0;
+}
+
+.field-row .field input{
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
 
 .primary-btn{
   height: 52px;
@@ -541,3 +565,13 @@ body{ -webkit-tap-highlight-color: transparent; }
 
 /* backdrop hidden = реально не существует (не ловит клики и не оставляет артефактов) */
 .sheet-backdrop[hidden]{ display:none !important; }
+
+.field-row .field{
+  flex: 1 1 0;   /* ключевое: одинаковая ширина */
+  min-width: 0;  /* ключевое: чтобы input не раздувал блок */
+}
+
+.field-row .field input{
+  width: 100%;
+  min-width: 0;  /* на всякий */
+}

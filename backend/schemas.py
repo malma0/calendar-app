@@ -73,3 +73,20 @@ class EventResponse(EventBase):
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+    class GroupUpdate(BaseModel):
+        name: str = Field(min_length=1, max_length=120)
+
+
+class GroupMember(BaseModel):
+    id: int
+    username: str
+    full_name: Optional[str] = None
+    color: str
+
+    class Config:
+        from_attributes = True
+
+
+class UserColorUpdate(BaseModel):
+    color: str = Field(min_length=4, max_length=20)  # например "#RRGGBB"

@@ -111,6 +111,73 @@ def get_my_groups(
 ):
     return db.query(models.Group).filter(models.Group.members.any(id=current_user.id)).all()
 
+@app.get("/api/groups/{group_id}", response_model=schemas.GroupResponse)
+def get_group(
+    group_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    group = (
+        db.query(models.Group)
+        .filter(models.Group.id == group_id, models.Group.members.any(id=current_user.id))
+        .first()
+    )
+    if not group:
+        raise HTTPException(status_code=404, detail="Группа не найдена или вы не состоите в ней")
+    return group
+
+
+@app.get("/api/groups/{group_id}/members", response_model=List[schemas.GroupMember])
+def get_group_members(
+    group_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    group = (
+        db.query(models.Group)
+        .filter(models.Group.id == group_id, models.Group.members.any(id=current_user.id))
+        .first()
+    )
+    if not group:
+        raise HTTPException(status_code=404, detail="Группа не найдена или вы не состоите в ней")
+    return group.members
+
+
+@app.put("/api/groups/{group_id}", response_model=schemas.GroupResponse)
+def update_group(
+    group_id: int,
+    payload: schemas.GroupUpdate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    group = (
+        db.query(models.Group)
+        .filter(models.Group.id == group_id, models.Group.members.any(id=current_user.id))
+        .first()
+    )
+    if not group:
+        raise HTTPException(status_code=404, detail="Группа не найдена или вы не состоите в ней")
+
+    # только владелец/админ
+    if group.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Только админ группы может менять название")
+
+    group.name = payload.name
+    db.commit()
+    db.refresh(group)
+    return group
+
+
+@app.put("/api/users/me/color", response_model=schemas.UserResponse)
+def update_my_color(
+    payload: schemas.UserColorUpdate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    current_user.color = payload.color
+    db.commit()
+    db.refresh(current_user)
+    return current_user
 
 # ===== EVENTS =====
 @app.post("/api/events", response_model=schemas.EventResponse)

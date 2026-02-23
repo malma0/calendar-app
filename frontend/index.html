@@ -4,7 +4,11 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/style.css?=7" />
+  <script type="module">
+  import { initFriends } from "./js/friends.js?v=999";
+  initFriends();
+</script>
   <title>Calendar App</title>
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -22,14 +26,16 @@
           <div class="page-sub">Группы и участники</div>
         </header>
 
+        <div class="card hero" id="groupCard" role="button" tabindex="0">
+          <div class="hero-badge">GROUP</div>
+          <div class="hero-title">Группа “Друзья”</div>
+          <div class="hero-sub">3 участника · общий календарь</div>
+        </div>
+
         <div class="card hero">
           <div class="hero-badge">GROUP</div>
           <div class="hero-title">Группа “Друзья”</div>
           <div class="hero-sub">3 участника · общий календарь</div>
-          <div class="hero-actions">
-            <button class="chip">Пригласить</button>
-            <button class="chip chip-ghost">Цвета</button>
-          </div>
         </div>
 
         <div class="card list">
@@ -157,21 +163,43 @@
 
         <div class="field">
           <label for="eventDate">Дата</label>
-          <input id="eventDate" />
+          <input id="eventDate" type="date" />
         </div>
 
         <div class="field-row">
-          <div class="field" style="flex:1">
+          <div class="field">
             <label for="eventTimeStart">Начало</label>
-            <input id="eventTimeStart" placeholder="12:00" />
+            <input id="eventTimeStart" type="time" />
           </div>
-          <div class="field" style="flex:1">
+
+          <div class="field">
             <label for="eventTimeEnd">Конец</label>
-            <input id="eventTimeEnd" placeholder="13:30" />
+            <input id="eventTimeEnd" type="time" />
           </div>
         </div>
 
         <button class="primary-btn" id="saveEventBtn">Сохранить</button>
+      </div>
+    </div>
+
+    <!-- Group sheet -->
+    <div class="sheet" id="groupSheet" aria-hidden="true">
+      <div class="sheet-handle"></div>
+
+      <div class="sheet-header">
+        <div class="sheet-title" id="groupSheetTitle">Группа</div>
+        <button class="sheet-close" id="closeGroup" type="button" aria-label="Закрыть">×</button>
+      </div>
+
+      <div class="sheet-body">
+        <button class="primary-btn" id="groupMembersBtn">Участники</button>
+        <button class="primary-btn" id="groupColorsBtn">Цвета</button>
+
+        <div class="field" id="renameWrap" hidden>
+          <label for="groupNameInput">Название группы</label>
+          <input id="groupNameInput" placeholder="Новое название" />
+          <button class="primary-btn" id="saveGroupNameBtn">Сохранить название</button>
+        </div>
       </div>
     </div>
 
@@ -196,5 +224,10 @@
   </div>
 
   <script src="js/app.js"></script>
+
+  <script type="module">
+    import { initFriends } from "./js/friends.js";
+    initFriends();
+  </script>
 </body>
 </html>
