@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="css/style.css?v=7" />
+  <link rel="stylesheet" href="css/style.css?v=9999" />
 <title>Calendar App</title>
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -181,15 +181,34 @@
       </div>
 
       <div class="sheet-body">
-        <button class="primary-btn" id="groupMembersBtn">Участники</button>
-        <button class="primary-btn" id="groupColorsBtn">Цвета</button>
 
-        <div class="field" id="renameWrap" hidden>
-          <label for="groupNameInput">Название группы</label>
-          <input id="groupNameInput" placeholder="Новое название" />
-          <button class="primary-btn" id="saveGroupNameBtn">Сохранить название</button>
-        </div>
+      <!-- Список участников (показывается сразу) -->
+      <div class="sheet-section">
+        <div class="section-title">Участники</div>
+        <div class="members-list" id="groupMembersList"></div>
       </div>
+
+      <!-- Мой цвет -->
+      <div class="sheet-section">
+        <div class="section-title">Мой цвет</div>
+
+        <div class="color-row">
+          <div class="color-preview" id="myColorPreview"></div>
+          <input class="color-input" id="myColorInput" type="color" value="#c9b08a" />
+          <button class="mini-btn" id="saveMyColorBtn">Сохранить</button>
+        </div>
+
+        <div class="color-hint">Этот цвет будет отображаться в событиях/точках занятости.</div>
+      </div>
+
+      <!-- Переименование (только админ) -->
+      <div class="field" id="renameWrap" hidden>
+        <label for="groupNameInput">Название группы</label>
+        <input id="groupNameInput" placeholder="Новое название" />
+        <button class="primary-btn" id="saveGroupNameBtn">Сохранить название</button>
+      </div>
+
+    </div>
     </div>
 
     <!-- ===== TABBAR ===== -->
@@ -212,11 +231,11 @@
 
   </div>
 
-  <script src="js/app.js?v=9999"></script>
+  <script src="js/app.js?v=4001"></script>
 
   <script type="module">
-    import { initFriends } from "./js/friends.js?v=9999";
-    initFriends();
+    import { initFriends } from "./js/friends.js?v=4001";
+    window.addEventListener("DOMContentLoaded", initFriends);
   </script>
 
 </body>

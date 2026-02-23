@@ -58,3 +58,9 @@ export function updateMyColor(color){
 export function getMe(){
   return apiFetch("/users/me");
 }
+export async function updateMyColor(color){
+  return await apiFetch("/api/users/me/color", {
+    method: "PUT",
+    body: JSON.stringify({ color }),
+  });
+}

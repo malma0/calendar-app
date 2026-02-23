@@ -248,8 +248,7 @@
 
   // ===== Sheets =====
   function closeAllSheets(){
-    $("addSheet").classList.remove("open");
-    $("busySheet").classList.remove("open");
+    document.querySelectorAll(".sheet").forEach(s => s.classList.remove("open"));
     $("sheetBackdrop").hidden = true;
   }
 

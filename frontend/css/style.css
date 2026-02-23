@@ -311,6 +311,8 @@ body{ -webkit-tap-highlight-color: transparent; }
 /* GROUP CARD CLICKABLE */
 #groupCard{
   cursor: pointer;
+  position: relative;
+  z-index: 2;
 }
 
 #groupCard:active{
@@ -568,4 +570,91 @@ body{ -webkit-tap-highlight-color: transparent; }
 /* IMPORTANT: hidden backdrop must not intercept taps */
 .sheet-backdrop[hidden]{
   display:none !important;
+}
+/* ===== GROUP SHEET: MEMBERS + COLOR ===== */
+.sheet-section{
+  padding: 6px 0 2px;
+}
+
+.section-title{
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 900;
+  letter-spacing: .3px;
+  margin-bottom: 8px;
+}
+
+.members-list{
+  display:flex;
+  flex-direction:column;
+  gap: 8px;
+}
+
+.member-item{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.member-dot{
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.18);
+}
+
+.member-name{
+  font-weight: 950;
+}
+
+.member-sub{
+  margin-left:auto;
+  color: var(--muted);
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.color-row{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+}
+
+.color-preview{
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(201,176,138,1);
+}
+
+.color-input{
+  height: 42px;
+  width: 56px;
+  padding: 0;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  overflow:hidden;
+}
+
+.mini-btn{
+  height: 42px;
+  padding: 0 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(201,176,138,0.22);
+  background: rgba(201,176,138,0.12);
+  color: rgba(236,225,208,0.95);
+  font-weight: 950;
+}
+
+.color-hint{
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
 }
