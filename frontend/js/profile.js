@@ -17,6 +17,8 @@ const LS = {
   notifPlans: "notif_plans",
   notifFreeDay: "notif_free_day",
   notifFreeSlot: "notif_free_slot",
+  weekStart: "weekStart", // "mon" | "sun"
+  timeFormat: "timeFormat", // "24" | "12"
 };
 
 function byId(id) {
@@ -29,11 +31,22 @@ function openSheetById(sheetId) {
   const sheet = byId(sheetId);
 
   if (backdrop) backdrop.hidden = false;
-  if (sheet) sheet.classList.add("open");
+  if (sheet) {
+    // Некоторые sheet'ы размечены с атрибутом hidden (например, Уведомления/Настройки).
+    // Если его не снять — будет видно только затемнение.
+    sheet.hidden = false;
+    sheet.classList.add("open");
+  }
 }
 
 function closeAllSheets() {
-  document.querySelectorAll(".sheet.open").forEach((s) => s.classList.remove("open"));
+  document.querySelectorAll(".sheet.open").forEach((s) => {
+    s.classList.remove("open");
+    // Возвращаем hidden только тем, у кого он должен быть (эти окна не должны быть кликабельны когда закрыты).
+    if (s.id === "notificationsSheet" || s.id === "settingsSheet") {
+      s.hidden = true;
+    }
+  });
   const backdrop = byId("sheetBackdrop");
   if (backdrop) backdrop.hidden = true;
 }
@@ -60,6 +73,46 @@ function initThemeUI() {
     applyTheme(e.target.checked ? "light" : "dark");
   });
 }
+
+
+function initSettingsExtras(){
+  // segmented controls (optional)
+  const weekSeg = byId("weekStartSeg");
+  const timeSeg = byId("timeFormatSeg");
+
+  const savedWeek = localStorage.getItem(LS.weekStart) || "mon";
+  const savedTime = localStorage.getItem(LS.timeFormat) || "24";
+
+  function setActive(seg, value){
+    if(!seg) return;
+    seg.querySelectorAll(".seg-btn").forEach(btn=>{
+      btn.classList.toggle("active", btn.getAttribute("data-value") === value);
+    });
+  }
+
+  setActive(weekSeg, savedWeek);
+  setActive(timeSeg, savedTime);
+
+  weekSeg?.addEventListener("click", (e)=>{
+    const btn = e.target.closest(".seg-btn");
+    if(!btn) return;
+    const v = btn.getAttribute("data-value");
+    localStorage.setItem(LS.weekStart, v);
+    setActive(weekSeg, v);
+    // календарь может использовать это позже
+    document.dispatchEvent(new CustomEvent("settings:weekStart", { detail: v }));
+  });
+
+  timeSeg?.addEventListener("click", (e)=>{
+    const btn = e.target.closest(".seg-btn");
+    if(!btn) return;
+    const v = btn.getAttribute("data-value");
+    localStorage.setItem(LS.timeFormat, v);
+    setActive(timeSeg, v);
+    document.dispatchEvent(new CustomEvent("settings:timeFormat", { detail: v }));
+  });
+}
+
 
 /* ===== Notifications ===== */
 function setNotifUIFromStorage() {
@@ -201,7 +254,9 @@ function openProfileEdit(me) {
   fs.style.display = "flex";
   // закрываем нижние sheets если открыты
   closeAllSheets();
+  document.body.classList.add("fullscreen-open");
 }
+
 
 function closeProfileEdit() {
   const fs = byId("profileEdit");
@@ -209,6 +264,7 @@ function closeProfileEdit() {
   fs.hidden = true;
   // Доп. страховка, чтобы окно точно исчезало и не перехватывало клики
   fs.style.display = "none";
+  document.body.classList.remove("fullscreen-open");
 }
 
 function bindProfileEdit(meRef) {
@@ -248,13 +304,6 @@ function bindProfileEdit(meRef) {
     localStorage.setItem(LS.avatar, dataUrl);
     setAvatarEl(byId("editAvatarPreview"), dataUrl);
     setAvatarEl(byId("profileAvatar"), dataUrl);
-  });
-
-  // logout
-  byId("logoutBtn")?.addEventListener("click", () => {
-    clearToken();
-    // простая перезагрузка
-    location.reload();
   });
 }
 
@@ -303,6 +352,7 @@ export async function initProfile() {
   renderProfileHeader(meRef.current);
 
   initThemeUI();
+  initSettingsExtras();
   setNotifUIFromStorage();
   bindNotifToggles();
 

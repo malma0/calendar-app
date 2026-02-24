@@ -171,13 +171,38 @@ export async function initFriends() {
     renderGroupSheet();
 
     // 1) Мой цвет в UI
-openSheetById("groupSheet");
+    try{
+      if(state.me?.color) setMyColorUI(state.me.color);
+    }catch{}
+
+    // 2) Загружаем участников и рисуем
+    if(state.activeGroup){
+      let members = [];
+      try{
+        members = await getGroupMembers(state.activeGroup.id);
+      }catch(e){
+        console.warn("getGroupMembers failed", e);
+        members = [];
+      }
+
+      // owner username (если можем найти)
+      const ownerId = state.activeGroup.owner_id;
+      const owner = members.find(x => x.id === ownerId) || null;
+      const ownerUsername = owner?.username || null;
+
+      // применяем локальные оверрайды (добавленные/удалённые)
+      const merged = mergeMembers(String(state.activeGroup.id), members);
+
+      const isOwner = !!(state.me && state.activeGroup.owner_id === state.me.id);
+      renderMembers(merged, { isOwner, ownerUsername });
+    }
+
+    openSheetById("groupSheet");
   } catch (err) {
     console.warn(err);
     openSheetById("groupSheet");
   }
 });
-
   // открытие по Enter (если фокус на карточке)
   groupCard.addEventListener("keydown", async (e) => {
     if (e.key !== "Enter") return;
@@ -296,7 +321,91 @@ openSheetById("groupSheet");
     }
   });
 
-  function renderMembers(list){
+  
+  // добавление участника (только админ) — пока локально (заглушка), бэк подключим позже
+  byId("addMemberBtn")?.addEventListener("click", async () => {
+    if(!state.activeGroup) return;
+    // подстрахуемся
+    if (!state.me) { try { state.me = await getMe(); } catch (_) {} }
+    const isOwner = !!(state.me && state.activeGroup.owner_id === state.me.id);
+    if(!isOwner){
+      alert("Только админ может добавлять участников");
+      return;
+    }
+
+    const username = (byId("addMemberUsername")?.value || "").trim().replace(/^@/,"");
+    if(!username) return;
+
+    const gid = String(state.activeGroup.id);
+    const overrides = loadMemberOverrides();
+    const ov = overrides[gid] || { added: [], removedUsernames: [] };
+
+    // если ранее удаляли — убираем из removed
+    ov.removedUsernames = (ov.removedUsernames||[]).filter(u => String(u) !== String(username));
+
+    // добавляем "фейкового" участника
+    const fake = {
+      id: `local_${Date.now()}`,
+      username,
+      full_name: username,
+      color: "#c9b08a",
+    };
+    ov.added = Array.isArray(ov.added) ? ov.added : [];
+    if(!ov.added.some(x => String(x.username)===String(username))) ov.added.push(fake);
+
+    overrides[gid] = ov;
+    saveMemberOverrides(overrides);
+
+    if(byId("addMemberUsername")) byId("addMemberUsername").value = "";
+
+    // перерисовка
+    let baseMembers = [];
+    try{ baseMembers = await getGroupMembers(state.activeGroup.id); }catch{ baseMembers = []; }
+    const merged = mergeMembers(gid, baseMembers);
+    const owner = baseMembers.find(x => x.id === state.activeGroup.owner_id) || null;
+    const ownerUsername = owner?.username || null;
+    renderMembers(merged, { isOwner:true, ownerUsername });
+  });
+
+  // удаление участника (делегирование кликов по списку)
+  document.getElementById("groupMembersList")?.addEventListener("click", async (e) => {
+    const btn = e.target?.closest?.('button[data-action="remove"]');
+    if(!btn) return;
+
+    if(!state.activeGroup) return;
+    if (!state.me) { try { state.me = await getMe(); } catch (_) {} }
+    const isOwner = !!(state.me && state.activeGroup.owner_id === state.me.id);
+    if(!isOwner){
+      alert("Только админ может удалять участников");
+      return;
+    }
+
+    const username = btn.getAttribute("data-username");
+    if(!username) return;
+
+    const gid = String(state.activeGroup.id);
+    const overrides = loadMemberOverrides();
+    const ov = overrides[gid] || { added: [], removedUsernames: [] };
+
+    ov.removedUsernames = Array.isArray(ov.removedUsernames) ? ov.removedUsernames : [];
+    if(!ov.removedUsernames.includes(username)) ov.removedUsernames.push(username);
+
+    // если он был в added — тоже убираем
+    ov.added = Array.isArray(ov.added) ? ov.added.filter(x => String(x.username)!==String(username)) : [];
+
+    overrides[gid] = ov;
+    saveMemberOverrides(overrides);
+
+    // перерисовка
+    let baseMembers = [];
+    try{ baseMembers = await getGroupMembers(state.activeGroup.id); }catch{ baseMembers = []; }
+    const merged = mergeMembers(gid, baseMembers);
+    const owner = baseMembers.find(x => x.id === state.activeGroup.owner_id) || null;
+    const ownerUsername = owner?.username || null;
+    renderMembers(merged, { isOwner:true, ownerUsername });
+  });
+
+function renderMembers(list){
   const wrap = document.getElementById("groupMembersList");
   if(!wrap) return;
 
@@ -371,6 +480,18 @@ async function copyToClipboard(text){
   document.getElementById("myColorInput")?.addEventListener("input", (e) => {
   setMyColorUI(e.target.value);
 });
+
+// быстрые пресеты цветов (чтобы не было пусто)
+document.getElementById("myColorPalette")?.addEventListener("click", (e) => {
+  const btn = e.target.closest(".palette-swatch");
+  if(!btn) return;
+  const color = btn.getAttribute("data-color");
+  if(!color) return;
+  const input = document.getElementById("myColorInput");
+  if(input) input.value = color;
+  setMyColorUI(color);
+});
+
 
 document.getElementById("saveMyColorBtn")?.addEventListener("click", async () => {
   const color = document.getElementById("myColorInput")?.value || "#c9b08a";

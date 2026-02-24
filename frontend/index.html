@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="css/style.css?v=10000" />
+  <link rel="stylesheet" href="css/style.css?v=5007" />
 <title>Calendar App</title>
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -39,6 +39,7 @@
             <span class="row-arrow">›</span>
           </button>
         </div>
+
       </section>
 
       <!-- Calendar -->
@@ -60,6 +61,14 @@
           </button>
         </header>
 
+        <div class="chips-row" id="chipsRow">
+          <button class="chip" id="chipToday" type="button">Сегодня</button>
+          <button class="chip" id="chipTomorrow" type="button">Завтра</button>
+          <button class="chip" id="chipWeekend" type="button">Выходные</button>
+          <button class="chip" id="chipWeek" type="button">Неделя</button>
+          <button class="chip" id="chipFindWindow" type="button">Найти окно</button>
+        </div>
+
         <div class="calendar">
           <div class="weekdays">
             <div class="weekday">ПН</div>
@@ -73,6 +82,7 @@
 
           <div class="month-grid" id="daysGrid"></div>
         </div>
+
       </section>
 
       <!-- Profile -->
@@ -108,9 +118,45 @@
             <span class="row-arrow">›</span>
           </button>
         </div>
+
+        <div class="card upcoming" id="upcomingCard">
+          <div class="upcoming-title">Ближайшее</div>
+          <div class="upcoming-list" id="upcomingList"></div>
+        </div>
       </section>
 
     </main>
+
+    
+    <!-- Profile Fullscreen Edit -->
+    <div class="fullscreen" id="profileEdit" hidden>
+      <header class="fs-header">
+        <button class="icon-btn" id="profileEditBack" type="button" aria-label="Назад">‹</button>
+        <div class="fs-title">Профиль</div>
+        <button class="icon-btn" id="profileEditSave" type="button" aria-label="Сохранить">✓</button>
+      </header>
+
+      <div class="fs-body">
+        <div class="avatar-wrap">
+          <div class="avatar big" id="editAvatarPreview">🦈</div>
+          <button class="icon-btn pencil" id="editAvatarBtn" type="button" aria-label="Изменить аватар">
+            <i data-lucide="pencil"></i>
+          </button>
+          <input id="avatarFileInput" type="file" accept="image/*" hidden />
+        </div>
+
+        <div class="card">
+          <label class="field-label">Никнейм (видно только вам)</label>
+          <input class="text-input" id="editNickname" type="text" placeholder="Например: matthew mal" />
+
+          <label class="field-label" style="margin-top:14px;">Username (видят другие)</label>
+          <input class="text-input" id="editUsername" type="text" placeholder="Например: matthewmal" />
+
+          <div class="hint" style="margin-top:14px;">Пока сохраняем локально (бэк добавим позже).</div>
+        </div>
+      </div>
+    </div>
+
 
     <!-- ===== SHEETS ===== -->
     <div class="sheet-backdrop" id="sheetBackdrop" hidden></div>
@@ -178,6 +224,17 @@
         <div class="members-list" id="groupMembersList"></div>
       </div>
 
+      <!-- Управление участниками (только админ) -->
+      <div class="sheet-section" id="memberAdminWrap" hidden>
+        <div class="section-title">Управление</div>
+        <div class="field">
+          <label for="addMemberUsername">Добавить участника (username)</label>
+          <input id="addMemberUsername" placeholder="Например: matthew" />
+        </div>
+        <button class="primary-btn" id="addMemberBtn" type="button">Добавить</button>
+        <div class="color-hint">Вы сможете удалить участника кнопкой справа в списке.</div>
+      </div>
+
       <!-- Мой цвет -->
       <div class="sheet-section">
         <div class="section-title">Мой цвет</div>
@@ -186,6 +243,15 @@
           <div class="color-preview" id="myColorPreview"></div>
           <input class="color-input" id="myColorInput" type="color" value="#c9b08a" />
           <button class="mini-btn" id="saveMyColorBtn">Сохранить</button>
+        </div>
+
+        <div class="palette-row" id="myColorPalette">
+          <button class="palette-swatch" type="button" data-color="#c9b08a" style="background:#c9b08a"></button>
+          <button class="palette-swatch" type="button" data-color="#7aa7ff" style="background:#7aa7ff"></button>
+          <button class="palette-swatch" type="button" data-color="#6ee7b7" style="background:#6ee7b7"></button>
+          <button class="palette-swatch" type="button" data-color="#fca5a5" style="background:#fca5a5"></button>
+          <button class="palette-swatch" type="button" data-color="#fde68a" style="background:#fde68a"></button>
+          <button class="palette-swatch" type="button" data-color="#a78bfa" style="background:#a78bfa"></button>
         </div>
 
         <div class="color-hint">Этот цвет будет отображаться в событиях/точках занятости.</div>
@@ -220,10 +286,7 @@
           <div class="color-hint" id="inviteHint">Пока демо: ссылка не активирует вступление. Сделаем после того, как «комната» заработает.</div>
         </div>
       </div>
-    </div>
-        <button class="primary-btn" id="inviteDoneBtn" type="button">Готово</button>
-      </div>
-    </div>
+</div>
 
     <!-- Groups sheet -->
     <div class="sheet" id="groupsSheet" aria-hidden="true">
@@ -242,128 +305,142 @@
           <div class="section-title">Создать группу</div>
           <div class="field">
             <label for="newGroupName">Название</label>
-            <input id="newGroupName" placeholder="Например: Работа" />
+            <div class="input-action-row">
+              <input id="newGroupName" placeholder="Например: Работа" />
+              <button class="primary-btn primary-btn--inline" id="createGroupBtn" type="button" aria-label="Создать группу">Создать</button>
+            </div>
           </div>
-          <button class="primary-btn" id="createGroupBtn" type="button">Создать</button>
+        </div>
+      </div>
+</div>
+
+    <!-- Find common free window sheet -->
+    <div class="sheet" id="freeWindowSheet" aria-hidden="true">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">Найти общее окно</div>
+        <button class="sheet-close" id="closeFreeWindow" type="button" aria-label="Закрыть">×</button>
+      </div>
+      <div class="sheet-body">
+        <div class="sheet-section">
+          <div class="section-title">Выберите группу</div>
+          <div class="groups-list" id="freeWindowGroups"></div>
         </div>
 
-        <button class="primary-btn" id="groupsDoneBtn" type="button">Готово</button>
+        <div class="sheet-section" id="freeWindowResultWrap" hidden>
+          <div class="section-title">Результат</div>
+          <div class="color-hint" id="freeWindowResult"></div>
+          <button class="primary-btn" id="freeWindowCreateBtn" type="button">Создать событие</button>
+        </div>
+      </div>
+
+      <div class="sheet-footer">
+        <button class="primary-btn" id="freeWindowDoneBtn" type="button">Готово</button>
       </div>
     </div>
 
-    <!-- Notifications sheet -->
-    <div class="sheet" id="notificationsSheet" aria-hidden="true">
+
+    
+    <!-- Notifications Sheet -->
+    <div class="sheet" id="notificationsSheet" hidden>
       <div class="sheet-handle"></div>
       <div class="sheet-header">
+        <button class="icon-btn" id="closeNotifications" type="button" aria-label="Назад">‹</button>
         <div class="sheet-title">Уведомления</div>
-        <button class="sheet-close" id="closeNotifications" type="button" aria-label="Закрыть">×</button>
+        <div style="width:44px"></div>
       </div>
+
       <div class="sheet-body">
-        <div class="toggle-row">
-          <div>
-            <div class="toggle-title">Включить уведомления</div>
-            <div class="toggle-sub">Основной переключатель</div>
-          </div>
-          <label class="switch">
-            <input type="checkbox" id="notifMaster">
-            <span class="slider"></span>
-          </label>
-        </div>
-
-        <div id="notifSubWrap" class="toggle-subwrap" hidden>
+        <div class="sheet-section">
           <div class="toggle-row">
-            <div>
-              <div class="toggle-title">Уведомления о планах других</div>
-              <div class="toggle-sub">Когда кто‑то добавляет событие</div>
+            <div class="toggle-text">
+              <div class="toggle-title">Включить уведомления</div>
             </div>
             <label class="switch">
-              <input type="checkbox" id="notifPlans">
+              <input type="checkbox" id="notifMaster">
               <span class="slider"></span>
             </label>
           </div>
 
-          <div class="toggle-row">
-            <div>
-              <div class="toggle-title">Уведомление о свободном дне</div>
-              <div class="toggle-sub">Появился общий свободный день</div>
+          <div class="subtoggles" id="notifSubWrap" hidden>
+            <div class="toggle-row">
+              <div class="toggle-text">
+                <div class="toggle-title">Уведомления о планах других</div>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="notifPlans">
+                <span class="slider"></span>
+              </label>
             </div>
-            <label class="switch">
-              <input type="checkbox" id="notifFreeDay">
-              <span class="slider"></span>
-            </label>
-          </div>
 
-          <div class="toggle-row">
-            <div>
-              <div class="toggle-title">Уведомление о свободном окне</div>
-              <div class="toggle-sub">Совпало свободное время (например ≥ 2ч)</div>
+            <div class="toggle-row">
+              <div class="toggle-text">
+                <div class="toggle-title">Уведомление о свободном дне</div>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="notifFreeDay">
+                <span class="slider"></span>
+              </label>
             </div>
-            <label class="switch">
-              <input type="checkbox" id="notifFreeSlot">
-              <span class="slider"></span>
-            </label>
+
+            <div class="toggle-row">
+              <div class="toggle-text">
+                <div class="toggle-title">Уведомление о свободном окне</div>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="notifFreeSlot">
+                <span class="slider"></span>
+              </label>
+            </div>
           </div>
         </div>
-
-        <button class="primary-btn" id="notificationsDoneBtn" type="button">Готово</button>
       </div>
     </div>
 
-    <!-- Settings sheet -->
-    <div class="sheet" id="settingsSheet" aria-hidden="true">
+    <!-- Settings Sheet -->
+    <div class="sheet" id="settingsSheet" hidden>
       <div class="sheet-handle"></div>
       <div class="sheet-header">
+        <button class="icon-btn" id="closeSettings" type="button" aria-label="Назад">‹</button>
         <div class="sheet-title">Настройки</div>
-        <button class="sheet-close" id="closeSettings" type="button" aria-label="Закрыть">×</button>
+        <div style="width:44px"></div>
       </div>
+
       <div class="sheet-body">
-        <div class="toggle-row">
-          <div>
-            <div class="toggle-title">Светлая тема</div>
-            <div class="toggle-sub">Переключение светлая/тёмная</div>
+        <div class="sheet-section">
+          <div class="toggle-row">
+            <div class="toggle-text">
+              <div class="toggle-title">Тёмная тема</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="themeToggle">
+              <span class="slider"></span>
+            </label>
           </div>
-          <label class="switch">
-            <input type="checkbox" id="themeToggle">
-            <span class="slider"></span>
-          </label>
-        </div>
-        <button class="primary-btn" id="settingsDoneBtn" type="button">Готово</button>
-      </div>
-    </div>
 
-    <!-- Profile edit (full screen) -->
-    <div class="fullscreen" id="profileEdit" hidden>
-      <header class="fs-header">
-        <button class="icon-btn fs-back" id="profileEditBack" type="button" aria-label="Назад"><span class="ico">‹</span></button>
-        <div class="fs-title">Профиль</div>
-        <button class="icon-btn fs-done" id="profileEditSave" type="button" aria-label="Сохранить"><span class="ico">✓</span></button>
-      </header>
+          <div class="sheet-divider"></div>
 
-      <div class="fs-body">
-        <div class="fs-avatar-wrap">
-          <div class="fs-avatar" id="editAvatarPreview"></div>
-          <button class="icon-mini-btn fs-avatar-edit" id="editAvatarBtn" type="button" aria-label="Изменить аватар"><i data-lucide="pencil"></i></button>
-          <input id="avatarFileInput" type="file" accept="image/*" hidden />
-        </div>
-
-        <div class="card list fs-form">
-          <div class="field">
-            <label for="editNickname">Никнейм (видно только вам)</label>
-            <input id="editNickname" placeholder="Например: matthew mal" />
+          <div class="row">
+            <div class="row-label">Первый день недели</div>
+            <div class="segmented" id="weekStartSeg">
+              <button class="seg-btn" data-value="mon" type="button">Пн</button>
+              <button class="seg-btn" data-value="sun" type="button">Вс</button>
+            </div>
           </div>
-          <div class="field">
-            <label for="editUsername">Username (видят другие)</label>
-            <input id="editUsername" placeholder="Например: matthewmal" />
-            <div class="color-hint">Пока сохраняем локально (бэк добавим позже).</div>
+
+          <div class="row">
+            <div class="row-label">Формат времени</div>
+            <div class="segmented" id="timeFormatSeg">
+              <button class="seg-btn" data-value="24" type="button">24</button>
+              <button class="seg-btn" data-value="12" type="button">12</button>
+            </div>
           </div>
         </div>
-
-        <button class="danger-btn" id="logoutBtn" type="button">Выйти</button>
       </div>
     </div>
 
 
-    <!-- ===== TABBAR ===== -->
+<!-- ===== TABBAR ===== -->
 <nav class="tabbar" role="tablist" aria-label="Навигация">
     <button class="tab" data-tab="friends" aria-selected="false">
     <i data-lucide="users" class="tab-ico"></i>
@@ -383,15 +460,15 @@
 
   </div>
 
-  <script src="js/app.js?v=5001"></script>
+  <script src="js/app.js?v=5007"></script>
 
   <script type="module">
-    import { initFriends } from "./js/friends.js?v=5001";
+    import { initFriends } from "./js/friends.js?v=5007";
     initFriends();
 </script>
 
   <script type="module">
-    import { initProfile } from "./js/profile.js?v=5001";
+    import { initProfile } from "./js/profile.js?v=5007";
     initProfile();
   </script>
 
