@@ -571,6 +571,13 @@ body{ -webkit-tap-highlight-color: transparent; }
 .sheet-backdrop[hidden]{
   display:none !important;
 }
+
+/* Жёсткое поведение HTML-атрибута hidden (особенно важно для iOS Safari).
+   Без этого элементы с class="fullscreen" могут становиться видимыми,
+   потому что ниже по CSS у них задан display:flex. */
+[hidden]{
+  display:none !important;
+}
 /* ===== GROUP SHEET: MEMBERS + COLOR ===== */
 .sheet-section{
   padding: 6px 0 2px;
@@ -657,4 +664,216 @@ body{ -webkit-tap-highlight-color: transparent; }
   color: var(--muted);
   font-size: 12px;
   font-weight: 700;
+}
+
+/* ===== INVITE SHEET ===== */
+.invite-row{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+}
+
+.invite-input{
+  flex: 1;
+  min-width: 0;
+}
+
+
+/* ===== Light theme (simple) ===== */
+body.theme-light{
+  --bg: #f4f5f7;
+  --bg2:#eef0f3;
+
+  --card: rgba(0,0,0,0.06);
+  --card2: rgba(0,0,0,0.08);
+  --stroke: rgba(0,0,0,0.10);
+
+  --text: rgba(0,0,0,0.92);
+  --muted: rgba(0,0,0,0.55);
+
+  --shadow: 0 18px 70px rgba(0,0,0,0.18);
+  --shadow2: 0 10px 30px rgba(0,0,0,0.12);
+}
+
+/* ===== Small icon button (copy/pencil) ===== */
+.icon-mini-btn{
+  width: 44px;
+  height: 44px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius: 14px;
+  border: 1px solid var(--stroke);
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+  cursor:pointer;
+}
+.icon-mini-btn svg{
+  width: 18px;
+  height: 18px;
+}
+.icon-mini-btn.is-copied{
+  outline: 2px solid rgba(201,176,138,0.65);
+}
+
+/* ===== Groups list ===== */
+.groups-list{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.groups-item{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:14px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--stroke);
+  background: rgba(255,255,255,0.05);
+  color: var(--text);
+  cursor:pointer;
+}
+.groups-item-left{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.groups-dot{
+  width:10px;
+  height:10px;
+  border-radius:999px;
+  background: rgba(255,255,255,0.22);
+  border: 1px solid var(--stroke);
+}
+.groups-dot.is-active{
+  background: var(--gold);
+}
+.groups-name{
+  font-weight: 600;
+}
+
+/* ===== iOS-like switch ===== */
+.toggle-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:14px 0;
+  border-bottom: 1px solid var(--stroke);
+}
+.toggle-row:last-child{ border-bottom: 0; }
+.toggle-title{ font-weight:600; }
+.toggle-sub{ color: var(--muted); font-size: 13px; margin-top:4px; }
+.toggle-subwrap{ margin-top: 8px; }
+
+.switch{
+  position:relative;
+  display:inline-block;
+  width: 52px;
+  height: 32px;
+  flex: 0 0 auto;
+}
+.switch input{
+  opacity:0;
+  width:0;
+  height:0;
+}
+.slider{
+  position:absolute;
+  cursor:pointer;
+  top:0; left:0; right:0; bottom:0;
+  background: rgba(255,255,255,0.18);
+  border: 1px solid var(--stroke);
+  border-radius: 999px;
+  transition: .2s;
+}
+.slider:before{
+  position:absolute;
+  content:"";
+  height:26px;
+  width:26px;
+  left:2px;
+  top:2px;
+  background: rgba(255,255,255,0.92);
+  border-radius:999px;
+  transition:.2s;
+}
+.switch input:checked + .slider{
+  background: rgba(55,214,122,0.65);
+}
+.switch input:checked + .slider:before{
+  transform: translateX(20px);
+}
+
+/* ===== Full screen modal (Profile edit) ===== */
+.fullscreen{
+  position:fixed;
+  inset:0;
+  /* Поверх любых sheet/backdrop/tabbar */
+  z-index: 200;
+  background:
+    radial-gradient(900px 600px at 20% 0%, rgba(255,255,255,0.06), transparent 55%),
+    radial-gradient(800px 600px at 90% 25%, rgba(201,176,138,0.08), transparent 58%),
+    linear-gradient(180deg, var(--bg), var(--bg2));
+  display:flex;
+  flex-direction:column;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.fs-header{
+  height: 56px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding: 0 14px;
+}
+.fs-title{
+  font-weight: 700;
+  font-size: 18px;
+}
+.fs-body{
+  flex:1;
+  overflow:auto;
+  padding: 14px 16px 24px;
+}
+.fs-avatar-wrap{
+  position:relative;
+  width: 180px;
+  height: 180px;
+  margin: 18px auto 16px;
+}
+.fs-avatar{
+  width: 180px;
+  height: 180px;
+  border-radius: 999px;
+  border: 1px solid var(--stroke);
+  background: rgba(255,255,255,0.06);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size: 64px;
+  overflow:hidden;
+}
+.fs-avatar-edit{
+  position:absolute;
+  right: 10px;
+  bottom: 10px;
+}
+.fs-form{
+  padding: 18px 16px;
+}
+.avatar-img{
+  color: transparent;
+}
+.danger-btn{
+  margin-top: 22px;
+  width:100%;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,77,77,0.35);
+  background: rgba(255,77,77,0.14);
+  color: var(--text);
+  font-weight: 700;
+  cursor:pointer;
 }

@@ -1,5 +1,7 @@
 // frontend/js/friends.js
-import { getMe, getMyGroups, getGroupMembers, renameGroup, updateMyColor } from "./api.js";
+import { getMe, getMyGroups, getGroupMembers, renameGroup, updateMyColor, createGroup } from "./api.js";
+
+const ACTIVE_GROUP_ID_KEY = "active_group_id";
 
 let state = {
   me: null,
@@ -29,7 +31,77 @@ function closeAllSheets() {
 /* ===== Data helpers ===== */
 async function loadDefaultGroup() {
   if (!state.groups?.length) state.groups = await getMyGroups();
-  state.activeGroup = state.groups?.[0] || null;
+
+  const storedId = Number(localStorage.getItem(ACTIVE_GROUP_ID_KEY) || 0) || null;
+  state.activeGroup =
+    (storedId ? state.groups.find((g) => g.id === storedId) : null) ||
+    state.groups?.[0] ||
+    null;
+}
+
+async function ensureGroupsLoaded() {
+  if (!state.me) {
+    try { state.me = await getMe(); } catch (_) {}
+  }
+  if (!state.groups?.length) {
+    try { state.groups = await getMyGroups(); } catch (_) { state.groups = []; }
+  }
+  await loadDefaultGroup();
+}
+
+function renderGroupCard() {
+  const title = byId("groupCardTitle");
+  const sub = byId("groupCardSub");
+
+  const g = state.activeGroup;
+  if (!g) {
+    if (title) title.textContent = "Группа";
+    if (sub) sub.textContent = "Создайте или выберите группу";
+    return;
+  }
+
+  if (title) title.textContent = `Группа “${g.name}”`;
+
+  // обновляем карточку на странице
+  renderGroupCard();
+  if (sub) sub.textContent = "Откройте, чтобы увидеть участников и свой цвет";
+}
+
+function renderGroupsSheet() {
+  const listEl = byId("groupsList");
+  if (!listEl) return;
+
+  listEl.innerHTML = "";
+
+  if (!state.groups?.length) {
+    listEl.innerHTML = `<div class="color-hint">Пока нет групп</div>`;
+    return;
+  }
+
+  for (const g of state.groups) {
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = "groups-item";
+    const isActive = state.activeGroup && state.activeGroup.id === g.id;
+
+    item.innerHTML = `
+      <div class="groups-item-left">
+        <div class="groups-dot ${isActive ? "is-active" : ""}"></div>
+        <div class="groups-name">${escapeHtml(g.name)}</div>
+      </div>
+      <div class="row-arrow">›</div>
+    `;
+
+    item.addEventListener("click", () => {
+      state.activeGroup = g;
+      localStorage.setItem(ACTIVE_GROUP_ID_KEY, String(g.id));
+      renderGroupCard();
+      renderGroupSheet();
+      closeAllSheets();
+    });
+
+    listEl.appendChild(item);
+  }
 }
 
 function renderGroupSheet() {
@@ -47,6 +119,9 @@ function renderGroupSheet() {
 
   if (title) title.textContent = `Группа “${g.name}”`;
 
+  // обновляем карточку на странице
+  renderGroupCard();
+
   const isOwner = !!(state.me && g.owner_id === state.me.id);
   if (renameWrap) renameWrap.hidden = !isOwner;
   if (isOwner && input) input.value = g.name;
@@ -62,10 +137,22 @@ export async function initFriends() {
 
   const groupCard = byId("groupCard");
   const closeBtn = byId("closeGroup");
+  const closeInviteBtn = byId("closeInvite");
+  const closeGroupsBtn = byId("closeGroups");
+  const closeNotificationsBtn = byId("closeNotifications");
+  const closeSettingsBtn = byId("closeSettings");
   const backdrop = byId("sheetBackdrop");
 
   // закрытия
   closeBtn?.addEventListener("click", closeAllSheets);
+  closeInviteBtn?.addEventListener("click", closeAllSheets);
+  closeGroupsBtn?.addEventListener("click", closeAllSheets);
+  closeNotificationsBtn?.addEventListener("click", closeAllSheets);
+  closeSettingsBtn?.addEventListener("click", closeAllSheets);
+  byId("inviteDoneBtn")?.addEventListener("click", closeAllSheets);
+  byId("groupsDoneBtn")?.addEventListener("click", closeAllSheets);
+  byId("notificationsDoneBtn")?.addEventListener("click", closeAllSheets);
+  byId("settingsDoneBtn")?.addEventListener("click", closeAllSheets);
   backdrop?.addEventListener("click", closeAllSheets);
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeAllSheets();
@@ -80,31 +167,11 @@ export async function initFriends() {
   // открытие sheet по клику на карточку
   groupCard.addEventListener("click", async () => {
   try {
-    if (!state.me) {
-      try { state.me = await getMe(); } catch (_) {}
-    }
-
-    if (!state.groups?.length) {
-      try { state.groups = await getMyGroups(); } catch (err) { state.groups = []; }
-    }
-
-    await loadDefaultGroup();
+    await ensureGroupsLoaded();
     renderGroupSheet();
 
     // 1) Мой цвет в UI
-    const savedLocal = localStorage.getItem("myColor");
-    const myColor = (state.me?.color || savedLocal || "#c9b08a");
-    setMyColorUI(myColor);
-
-    // 2) Сразу грузим участников и рендерим
-    if(state.activeGroup){
-      const members = await getGroupMembers(state.activeGroup.id);
-      renderMembers(members);
-    } else {
-      renderMembers([]);
-    }
-
-    openSheetById("groupSheet");
+openSheetById("groupSheet");
   } catch (err) {
     console.warn(err);
     openSheetById("groupSheet");
@@ -117,21 +184,83 @@ export async function initFriends() {
     groupCard.click();
   });
 
-  // кнопка "Участники"
-  byId("groupMembersBtn")?.addEventListener("click", async () => {
-    if (!state.activeGroup) return;
-
+  // "Приглашения" (мини-окно)
+  byId("inviteBtn")?.addEventListener("click", async () => {
     try {
-      const members = await getGroupMembers(state.activeGroup.id);
-      alert(
-        "Участники:\n" +
-          members
-            .map((m) => `${m.full_name || m.username} (${m.username})`)
-            .join("\n")
-      );
-    } catch (err) {
-      console.warn(err);
-      alert("Не удалось загрузить участников");
+      if (!state.me) {
+        try { state.me = await getMe(); } catch (_) {}
+      }
+      await ensureGroupsLoaded();
+
+      const linkInput = byId("inviteLink");
+      const hint = byId("inviteHint");
+
+      if (!state.activeGroup) {
+        if (linkInput) linkInput.value = "";
+        if (hint) hint.textContent = "Сначала создайте/выберите группу.";
+        openSheetById("inviteSheet");
+        return;
+      }
+
+      // пока демо-ссылка — логику вступления добавим позже
+      const demoLink = `${location.origin}/join?group=${encodeURIComponent(state.activeGroup.id)}&code=demo`;
+      if (linkInput) linkInput.value = demoLink;
+      if (hint) hint.textContent = "Пока демо: ссылка не активирует вступление. Сделаем после того, как «комната» заработает.";
+
+      openSheetById("inviteSheet");
+    } catch (e) {
+      console.warn(e);
+      openSheetById("inviteSheet");
+    }
+  });
+
+  
+  // "Группы" — выбор/создание групп
+  byId("groupsBtn")?.addEventListener("click", async () => {
+    try {
+      await ensureGroupsLoaded();
+      renderGroupsSheet();
+      openSheetById("groupsSheet");
+    } catch (e) {
+      console.warn(e);
+      openSheetById("groupsSheet");
+    }
+  });
+
+  byId("createGroupBtn")?.addEventListener("click", async () => {
+    const name = (byId("newGroupName")?.value || "").trim();
+    if (!name) return;
+    try {
+      const g = await createGroup(name);
+      state.groups = await getMyGroups();
+      state.activeGroup = state.groups.find((x) => x.id === g.id) || g;
+      localStorage.setItem(ACTIVE_GROUP_ID_KEY, String(state.activeGroup.id));
+      const inp = byId("newGroupName");
+      if (inp) inp.value = "";
+      renderGroupCard();
+      renderGroupSheet();
+      renderGroupsSheet();
+      closeAllSheets();
+    } catch (e) {
+      console.warn(e);
+      alert("Не удалось создать группу");
+    }
+  });
+
+// копирование ссылки
+  byId("copyInviteBtn")?.addEventListener("click", async () => {
+    const link = (byId("inviteLink")?.value || "").trim();
+    if (!link) return;
+    try {
+      await copyToClipboard(link);
+      const btn = byId("copyInviteBtn");
+      if (btn) {
+        btn.classList.add("is-copied");
+        setTimeout(() => btn.classList.remove("is-copied"), 900);
+      }
+    } catch (e) {
+      console.warn(e);
+      alert("Не удалось скопировать. Скопируйте вручную.");
     }
   });
 
@@ -209,11 +338,31 @@ function escapeHtml(s){
     .replaceAll("'","&#039;");
 }
 
+async function copyToClipboard(text){
+  // modern
+  if (navigator.clipboard?.writeText) {
+    return navigator.clipboard.writeText(text);
+  }
+  // fallback
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.setAttribute("readonly", "");
+  ta.style.position = "fixed";
+  ta.style.left = "-9999px";
+  document.body.appendChild(ta);
+  ta.select();
+  const ok = document.execCommand("copy");
+  document.body.removeChild(ta);
+  if (!ok) throw new Error("execCommand copy failed");
+}
+
   // первичная подгрузка (не критично)
   try {
     state.me = await getMe();
     state.groups = await getMyGroups();
     await loadDefaultGroup();
+    renderGroupCard();
+    renderGroupSheet();
   } catch (err) {
     // если не залогинен — ок
     console.warn(err);

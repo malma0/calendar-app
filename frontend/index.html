@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="css/style.css?v=9999" />
+  <link rel="stylesheet" href="css/style.css?v=10000" />
 <title>Calendar App</title>
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -24,21 +24,16 @@
 
         <div class="card hero" id="groupCard" role="button" tabindex="0">
           <div class="hero-badge">GROUP</div>
-          <div class="hero-title">Группа “Друзья”</div>
-          <div class="hero-sub">3 участника · общий календарь</div>
+          <div class="hero-title" id="groupCardTitle">Группа</div>
+          <div class="hero-sub" id="groupCardSub"></div>
         </div>
         <div class="card list">
-          <button class="list-row">
-            <span class="row-ico">👥</span>
-            <span class="row-text">Участники</span>
-            <span class="row-arrow">›</span>
-          </button>
-          <button class="list-row">
+          <button class="list-row" id="inviteBtn">
             <span class="row-ico">🔗</span>
             <span class="row-text">Приглашения</span>
             <span class="row-arrow">›</span>
           </button>
-          <button class="list-row">
+          <button class="list-row" id="groupsBtn">
             <span class="row-ico">🗓️</span>
             <span class="row-text">Группы</span>
             <span class="row-arrow">›</span>
@@ -81,16 +76,16 @@
       </section>
 
       <!-- Profile -->
-      <section class="page" id="page-profile" hidden>
-        <header class="page-header profile-header">
-          <div class="avatar">🦈</div>
+      <section class="page" id="page-profile">
+        <header class="page-header profile-header" id="profileHeader" role="button" tabindex="0">
+          <div class="avatar" id="profileAvatar">🦈</div>
           <div>
-            <div class="page-title">matthew mal</div>
-            <div class="page-sub">Профиль и настройки</div>
+            <div class="page-title" id="profileNickname">matthew mal</div>
+            <div class="page-sub" id="profileSub">Профиль</div>
           </div>
         </header>
 
-        <div class="card hero hero-gold">
+        <div class="card hero hero-gold" hidden>
           <div class="hero-badge">PREMIUM</div>
           <div class="hero-title">Собирайте планы вместе</div>
           <div class="hero-sub">Группы · цвета · напоминания</div>
@@ -102,17 +97,12 @@
         </div>
 
         <div class="card list">
-          <button class="list-row">
-            <span class="row-ico">👥</span>
-            <span class="row-text">Друзья</span>
-            <span class="row-arrow">›</span>
-          </button>
-          <button class="list-row">
+<button class="list-row" id="notificationsBtn">
             <span class="row-ico">🔔</span>
             <span class="row-text">Уведомления</span>
             <span class="row-arrow">›</span>
           </button>
-          <button class="list-row">
+          <button class="list-row" id="settingsBtn">
             <span class="row-ico">⚙️</span>
             <span class="row-text">Настройки</span>
             <span class="row-arrow">›</span>
@@ -211,6 +201,168 @@
     </div>
     </div>
 
+    <!-- Invite sheet (мини окно для ссылки приглашения) -->
+    <div class="sheet" id="inviteSheet" aria-hidden="true">
+      <div class="sheet-handle"></div>
+
+      <div class="sheet-header">
+        <div class="sheet-title">Приглашение в группу</div>
+        <button class="sheet-close" id="closeInvite" type="button" aria-label="Закрыть">×</button>
+      </div>
+
+      <div class="sheet-body">
+        <div class="field">
+          <label for="inviteLink">Ссылка</label>
+          <div class="invite-row">
+            <input id="inviteLink" class="invite-input" readonly value="" placeholder="Сгенерируем ссылку…" />
+            <button class="icon-mini-btn" id="copyInviteBtn" type="button" aria-label="Скопировать ссылку"><i data-lucide="copy"></i></button>
+          </div>
+          <div class="color-hint" id="inviteHint">Пока демо: ссылка не активирует вступление. Сделаем после того, как «комната» заработает.</div>
+        </div>
+      </div>
+    </div>
+        <button class="primary-btn" id="inviteDoneBtn" type="button">Готово</button>
+      </div>
+    </div>
+
+    <!-- Groups sheet -->
+    <div class="sheet" id="groupsSheet" aria-hidden="true">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">Группы</div>
+        <button class="sheet-close" id="closeGroups" type="button" aria-label="Закрыть">×</button>
+      </div>
+      <div class="sheet-body">
+        <div class="sheet-section">
+          <div class="section-title">Мои группы</div>
+          <div class="groups-list" id="groupsList"></div>
+        </div>
+
+        <div class="sheet-section">
+          <div class="section-title">Создать группу</div>
+          <div class="field">
+            <label for="newGroupName">Название</label>
+            <input id="newGroupName" placeholder="Например: Работа" />
+          </div>
+          <button class="primary-btn" id="createGroupBtn" type="button">Создать</button>
+        </div>
+
+        <button class="primary-btn" id="groupsDoneBtn" type="button">Готово</button>
+      </div>
+    </div>
+
+    <!-- Notifications sheet -->
+    <div class="sheet" id="notificationsSheet" aria-hidden="true">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">Уведомления</div>
+        <button class="sheet-close" id="closeNotifications" type="button" aria-label="Закрыть">×</button>
+      </div>
+      <div class="sheet-body">
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-title">Включить уведомления</div>
+            <div class="toggle-sub">Основной переключатель</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="notifMaster">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div id="notifSubWrap" class="toggle-subwrap" hidden>
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-title">Уведомления о планах других</div>
+              <div class="toggle-sub">Когда кто‑то добавляет событие</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="notifPlans">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-title">Уведомление о свободном дне</div>
+              <div class="toggle-sub">Появился общий свободный день</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="notifFreeDay">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-title">Уведомление о свободном окне</div>
+              <div class="toggle-sub">Совпало свободное время (например ≥ 2ч)</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="notifFreeSlot">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <button class="primary-btn" id="notificationsDoneBtn" type="button">Готово</button>
+      </div>
+    </div>
+
+    <!-- Settings sheet -->
+    <div class="sheet" id="settingsSheet" aria-hidden="true">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">Настройки</div>
+        <button class="sheet-close" id="closeSettings" type="button" aria-label="Закрыть">×</button>
+      </div>
+      <div class="sheet-body">
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-title">Светлая тема</div>
+            <div class="toggle-sub">Переключение светлая/тёмная</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="themeToggle">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <button class="primary-btn" id="settingsDoneBtn" type="button">Готово</button>
+      </div>
+    </div>
+
+    <!-- Profile edit (full screen) -->
+    <div class="fullscreen" id="profileEdit" hidden>
+      <header class="fs-header">
+        <button class="icon-btn fs-back" id="profileEditBack" type="button" aria-label="Назад"><span class="ico">‹</span></button>
+        <div class="fs-title">Профиль</div>
+        <button class="icon-btn fs-done" id="profileEditSave" type="button" aria-label="Сохранить"><span class="ico">✓</span></button>
+      </header>
+
+      <div class="fs-body">
+        <div class="fs-avatar-wrap">
+          <div class="fs-avatar" id="editAvatarPreview"></div>
+          <button class="icon-mini-btn fs-avatar-edit" id="editAvatarBtn" type="button" aria-label="Изменить аватар"><i data-lucide="pencil"></i></button>
+          <input id="avatarFileInput" type="file" accept="image/*" hidden />
+        </div>
+
+        <div class="card list fs-form">
+          <div class="field">
+            <label for="editNickname">Никнейм (видно только вам)</label>
+            <input id="editNickname" placeholder="Например: matthew mal" />
+          </div>
+          <div class="field">
+            <label for="editUsername">Username (видят другие)</label>
+            <input id="editUsername" placeholder="Например: matthewmal" />
+            <div class="color-hint">Пока сохраняем локально (бэк добавим позже).</div>
+          </div>
+        </div>
+
+        <button class="danger-btn" id="logoutBtn" type="button">Выйти</button>
+      </div>
+    </div>
+
+
     <!-- ===== TABBAR ===== -->
 <nav class="tabbar" role="tablist" aria-label="Навигация">
     <button class="tab" data-tab="friends" aria-selected="false">
@@ -231,11 +383,16 @@
 
   </div>
 
-  <script src="js/app.js?v=4001"></script>
+  <script src="js/app.js?v=5001"></script>
 
   <script type="module">
-    import { initFriends } from "./js/friends.js?v=4001";
-    window.addEventListener("DOMContentLoaded", initFriends);
+    import { initFriends } from "./js/friends.js?v=5001";
+    initFriends();
+</script>
+
+  <script type="module">
+    import { initProfile } from "./js/profile.js?v=5001";
+    initProfile();
   </script>
 
 </body>
