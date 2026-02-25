@@ -30,12 +30,18 @@ function openSheetById(sheetId) {
   const backdrop = byId("sheetBackdrop");
   const sheet = byId(sheetId);
 
-  if (backdrop) backdrop.hidden = false;
+  if (backdrop) {
+    backdrop.hidden = false;
+    // micro: smooth fade-in (avoid “резко”)
+    backdrop.classList.add("visible");
+  }
+
   if (sheet) {
     // Некоторые sheet'ы размечены с атрибутом hidden (например, Уведомления/Настройки).
     // Если его не снять — будет видно только затемнение.
     sheet.hidden = false;
-    sheet.classList.add("open");
+    // micro: let browser apply layout before starting transition
+    requestAnimationFrame(() => sheet.classList.add("open"));
   }
 }
 
@@ -48,7 +54,10 @@ function closeAllSheets() {
     }
   });
   const backdrop = byId("sheetBackdrop");
-  if (backdrop) backdrop.hidden = true;
+  if (backdrop) {
+    backdrop.classList.remove("visible");
+    backdrop.hidden = true;
+  }
 }
 
 /* ===== Theme ===== */
@@ -115,7 +124,16 @@ function initSettingsExtras(){
 
 
 /* ===== Notifications ===== */
+function ensureNotifDefaults() {
+  // Если ключей ещё нет (после обновления/первого захода) — считаем, что уведомления ВКЛ и все подкатегории тоже.
+  if (localStorage.getItem(LS.notifMaster) === null) localStorage.setItem(LS.notifMaster, "1");
+  if (localStorage.getItem(LS.notifPlans) === null) localStorage.setItem(LS.notifPlans, "1");
+  if (localStorage.getItem(LS.notifFreeDay) === null) localStorage.setItem(LS.notifFreeDay, "1");
+  if (localStorage.getItem(LS.notifFreeSlot) === null) localStorage.setItem(LS.notifFreeSlot, "1");
+}
+
 function setNotifUIFromStorage() {
+  ensureNotifDefaults();
   const master = localStorage.getItem(LS.notifMaster) === "1";
   const plans = localStorage.getItem(LS.notifPlans) === "1";
   const freeDay = localStorage.getItem(LS.notifFreeDay) === "1";
@@ -132,7 +150,59 @@ function setNotifUIFromStorage() {
   if (freeDayEl) freeDayEl.checked = freeDay;
   if (freeSlotEl) freeSlotEl.checked = freeSlot;
 
-  if (subWrap) subWrap.hidden = !master;
+  if (subWrap) animateCollapse(subWrap, master);
+}
+
+function animateCollapse(el, open) {
+  if (!el) return;
+
+  // ensure base class
+  el.classList.add("collapse");
+
+  // remove previous transition listeners (if any)
+  if (el.__collapseTeardown) {
+    try { el.__collapseTeardown(); } catch (_) {}
+    el.__collapseTeardown = null;
+  }
+
+  if (open) {
+    // open: show immediately, then animate height + opacity
+    el.hidden = false;
+    el.classList.add("is-open");
+
+    // start from 0
+    el.style.maxHeight = "0px";
+    void el.offsetHeight;
+    el.style.maxHeight = `${el.scrollHeight}px`;
+
+    // after transition, remove max-height so content changes won't jump
+    const onEnd = (e) => {
+      if (e.target !== el) return;
+      if (e.propertyName !== "max-height") return;
+      el.style.maxHeight = "";
+      el.removeEventListener("transitionend", onEnd);
+      el.__collapseTeardown = null;
+    };
+    el.addEventListener("transitionend", onEnd);
+    el.__collapseTeardown = () => el.removeEventListener("transitionend", onEnd);
+  } else {
+    // close: animate to 0 and hide exactly on transition end (no extra delay)
+    const startH = el.scrollHeight;
+    el.style.maxHeight = `${startH}px`;
+    void el.offsetHeight;
+    el.classList.remove("is-open");
+    el.style.maxHeight = "0px";
+
+    const onEnd = (e) => {
+      if (e.target !== el) return;
+      if (e.propertyName !== "max-height") return;
+      el.hidden = true;
+      el.removeEventListener("transitionend", onEnd);
+      el.__collapseTeardown = null;
+    };
+    el.addEventListener("transitionend", onEnd);
+    el.__collapseTeardown = () => el.removeEventListener("transitionend", onEnd);
+  }
 }
 
 function bindNotifToggles() {
@@ -252,6 +322,9 @@ function openProfileEdit(me) {
   // Доп. страховка: на iOS Safari иногда атрибут hidden может не сработать
   // при наличии CSS display для класса.
   fs.style.display = "flex";
+
+  // micro: smooth open
+  requestAnimationFrame(() => fs.classList.add("open"));
   // закрываем нижние sheets если открыты
   closeAllSheets();
   document.body.classList.add("fullscreen-open");
@@ -261,9 +334,14 @@ function openProfileEdit(me) {
 function closeProfileEdit() {
   const fs = byId("profileEdit");
   if (!fs) return;
-  fs.hidden = true;
-  // Доп. страховка, чтобы окно точно исчезало и не перехватывало клики
-  fs.style.display = "none";
+
+  // micro: smooth close
+  fs.classList.remove("open");
+  window.setTimeout(() => {
+    fs.hidden = true;
+    // Доп. страховка, чтобы окно точно исчезало и не перехватывало клики
+    fs.style.display = "none";
+  }, 230);
   document.body.classList.remove("fullscreen-open");
 }
 
@@ -310,8 +388,10 @@ function bindProfileEdit(meRef) {
 function bindProfileSheets() {
   // notifications
   byId("notificationsBtn")?.addEventListener("click", () => {
-    setNotifUIFromStorage();
+    // Важно: сначала показываем sheet, иначе scrollHeight у скрытых элементов = 0
+    // и подкатегории остаются "схлопнутыми" после обновления страницы.
     openSheetById("notificationsSheet");
+    requestAnimationFrame(() => setNotifUIFromStorage());
   });
   byId("closeNotifications")?.addEventListener("click", closeAllSheets);
   byId("notificationsDoneBtn")?.addEventListener("click", closeAllSheets);

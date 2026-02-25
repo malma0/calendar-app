@@ -433,9 +433,7 @@ function renderMembers(list){
 
 function setMyColorUI(color){
   const input = document.getElementById("myColorInput");
-  const preview = document.getElementById("myColorPreview");
   if(input) input.value = color;
-  if(preview) preview.style.background = color;
 }
 
 function escapeHtml(s){

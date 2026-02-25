@@ -85,7 +85,6 @@ body{ -webkit-tap-highlight-color: transparent; }
   align-items:center;
   gap:10px;
   background: rgba(11,12,16,0.68);
-  backdrop-filter: blur(16px);
 }
 
 .icon-btn{
@@ -381,9 +380,8 @@ body{ -webkit-tap-highlight-color: transparent; }
 .sheet-backdrop{
   position:fixed;
   inset:0;
-  background: rgba(0,0,0,0.55);
-  backdrop-filter: blur(10px);
-  z-index: 80;
+  background: #000;
+z-index: 80;
   opacity: 0;
   transition: opacity .28s ease;
 }
@@ -396,7 +394,7 @@ body{ -webkit-tap-highlight-color: transparent; }
   z-index: 90;
 
   border-radius: var(--rXL);
-  background: rgba(18,18,22,0.92);
+  background: #121216;
   border: 1px solid rgba(255,255,255,0.10);
   box-shadow: var(--shadow);
   overflow:hidden;
@@ -541,9 +539,8 @@ body{ -webkit-tap-highlight-color: transparent; }
   height: 64px;
   border-radius: 22px;
   border: 1px solid rgba(255,255,255,0.10);
-  background: rgba(18,18,22,0.92);
-  backdrop-filter: blur(16px);
-  box-shadow: var(--shadow);
+  background: #121216;
+box-shadow: var(--shadow);
   display:flex;
   align-items:center;
   justify-content:space-around;
@@ -846,6 +843,28 @@ body.theme-light{
   flex-direction:column;
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
+
+  /* micro: smooth open/close */
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity .22s ease, transform .22s ease;
+}
+.fullscreen.open{
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ===== Collapse (Notifications subcategories) ===== */
+.collapse{
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height .22s ease, opacity .18s ease;
+}
+.collapse.is-open{
+  opacity: 1;
+  /* Keep it open after JS removes inline max-height on transition end */
+  max-height: 9999px;
 }
 .fs-header{
   height: 56px;
@@ -1157,10 +1176,19 @@ body.fullscreen-open .tabbar{ display:none; }
   display: none;
 }
 
+/* Week list must scroll and never hide the last day behind the tabbar */
+.calendar.week-mode{
+  overflow: hidden; /* keep scroll inside the list */
+}
+
 #daysGrid.week-mode{
   display: flex;
   flex-direction: column;
   gap: 12px;
+
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 18px;
 }
 
 .week-day-card{
