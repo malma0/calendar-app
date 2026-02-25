@@ -227,7 +227,13 @@ function bindNotifToggles() {
 
 /* ===== Profile UI ===== */
 function getLocalAvatar() {
-  return localStorage.getItem(LS.avatar) || "🦈";
+  // migrate old default (🦈) -> 👤 so users don't keep seeing the shark after updates
+  const stored = localStorage.getItem(LS.avatar);
+  if (stored === "🦈") {
+    localStorage.setItem(LS.avatar, "👤");
+    return "👤";
+  }
+  return stored || "👤";
 }
 
 function setAvatarEl(el, avatarValue) {
@@ -246,7 +252,7 @@ function setAvatarEl(el, avatarValue) {
   // emoji/text
   el.classList.remove("avatar-img");
   el.style.backgroundImage = "";
-  el.textContent = avatarValue || "🦈";
+  el.textContent = avatarValue || "👤";
 }
 
 function readProfileFromStorage() {

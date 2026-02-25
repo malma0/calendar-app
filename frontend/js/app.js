@@ -30,6 +30,7 @@
     touchStartX: null,
     touchStartY: null,
     activeTab: "calendar",
+    editingEventId: null,
   };
 
   const $ = (id) => document.getElementById(id);
@@ -182,6 +183,23 @@ function pad2(n){ return String(n).padStart(2,"0"); }
   function saveEvents(list){ localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }
   function addEvent(ev){ const all = loadEvents(); all.push(ev); saveEvents(all); }
 
+  function updateEventById(id, patch){
+    const all = loadEvents();
+    const idx = all.findIndex(e => e.id === id);
+    if(idx === -1) return false;
+    all[idx] = { ...all[idx], ...patch };
+    saveEvents(all);
+    return true;
+  }
+
+  function deleteEventById(id){
+    const all = loadEvents();
+    const next = all.filter(e => e.id !== id);
+    if(next.length === all.length) return false;
+    saveEvents(next);
+    return true;
+  }
+
   function eventsForIso(iso){
     return loadEvents()
       .filter(e => e.date === iso)
@@ -297,7 +315,6 @@ function renderWeekHeader(){
     if(!wrapCalendar && !wrapFriends) return;
 
     const today = startOfDay(new Date());
-    const to = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 7);
     const all = loadEvents();
 
     const items = all
@@ -305,13 +322,13 @@ function renderWeekHeader(){
       .filter(e => {
         if(!e.date) return false;
         const d = new Date(e.date + "T00:00:00");
-        return d >= today && d < to;
+        return d >= today;
       })
       .sort((a,b) => {
         if(a.date !== b.date) return String(a.date).localeCompare(String(b.date));
         return String(a.start_time || "").localeCompare(String(b.start_time || ""));
       })
-      .slice(0, 5);
+      .slice(0, 4);
 
     function renderTo(wrap){
       if(!wrap) return;
@@ -327,6 +344,8 @@ function renderWeekHeader(){
       for(const ev of items){
         const row = document.createElement("div");
         row.className = "up-row";
+        row.role = "button";
+        row.tabIndex = 0;
         const when = ev.date ? formatDateShort(ev.date) : "";
         const time = ev.start_time ? ` • ${formatTime(ev.start_time)}` : "";
         row.innerHTML = `
@@ -336,6 +355,10 @@ function renderWeekHeader(){
             <div class="up-sub">${escapeHtml(ev.location || "")}</div>
           </div>
         `;
+        row.addEventListener("click", () => {
+          if(!ev.date) return;
+          document.dispatchEvent(new CustomEvent("calendar:navigate", { detail: { iso: ev.date } }));
+        });
         wrap.appendChild(row);
       }
     }
@@ -415,6 +438,7 @@ function renderMonth(){
 
       const card = document.createElement("div");
       card.className = "week-day-card";
+      card.dataset.iso = iso;
       const headRight = `${d.getDate()} ${monthNameRu(d)}`;
       card.innerHTML = `
         <div class="week-day-head">
@@ -443,8 +467,7 @@ function renderMonth(){
       if(isSameDay(d, state.selectedDate)) card.classList.add("is-selected");
 
       card.addEventListener("click", () => {
-        state.selectedDate = startOfDay(d);
-        renderWeek();
+        setSelectedDate(startOfDay(d));
         openBusySheet(d);
       });
 
@@ -452,6 +475,37 @@ function renderMonth(){
 
       grid.appendChild(card);
     }
+
+    // Back button to month view
+    const backWrap = document.createElement("div");
+    backWrap.className = "week-back-wrap";
+    backWrap.innerHTML = `<button class="week-back-btn" type="button">Обратно</button>`;
+    backWrap.querySelector("button")?.addEventListener("click", () => {
+      state.viewMode = "month";
+      state.weekStartDate = null;
+      ensureMonthDom();
+      renderMonth();
+      renderUpcoming();
+    });
+    grid.appendChild(backWrap);
+  }
+
+  function setSelectedDate(date){
+    const prevIso = state.selectedDate ? isoDate(state.selectedDate) : null;
+    state.selectedDate = startOfDay(date);
+
+    if(state.viewMode === "week"){
+      const prev = document.querySelector(".week-day-card.is-selected");
+      prev?.classList.remove("is-selected");
+      const next = document.querySelector(`.week-day-card[data-iso="${isoDate(state.selectedDate)}"]`);
+      next?.classList.add("is-selected");
+      return;
+    }
+
+    const prevEl = prevIso ? document.querySelector(`.day[data-iso="${prevIso}"]`) : document.querySelector(".day.selected");
+    prevEl?.classList.remove("selected");
+    const nextEl = document.querySelector(`.day[data-iso="${isoDate(state.selectedDate)}"]`);
+    nextEl?.classList.add("selected");
   }
 
   function render(){
@@ -509,6 +563,7 @@ function createDayCell(date, otherMonth){
     cell.appendChild(indicator);
 
     const iso = isoDate(date);
+    cell.dataset.iso = iso;
     const busyUsers = busyUsersForIso(iso);
 
     if(busyUsers.length === 1){
@@ -532,8 +587,7 @@ function createDayCell(date, otherMonth){
 
     // tap -> open busy sheet
     cell.addEventListener("click", () => {
-      state.selectedDate = startOfDay(date);
-      render();
+      setSelectedDate(date);
       openBusySheet(date);
     });
 
@@ -609,6 +663,7 @@ function createDayCell(date, otherMonth){
   function closeAllSheets(){
     document.querySelectorAll(".sheet").forEach(s => s.classList.remove("open"));
     $("sheetBackdrop").hidden = true;
+    state.editingEventId = null;
   }
 
   function openBusySheet(date){
@@ -646,6 +701,49 @@ function createDayCell(date, otherMonth){
       const items = byUser.get(m.id);
       if(!items || items.length === 0) continue;
 
+      // Only own events can be edited/deleted
+      if(m.id === CURRENT_USER_ID){
+        for(const ev of items){
+          const row = document.createElement("div");
+          row.className = "busy-item busy-item--me";
+          row.innerHTML = `
+            <div class="busy-color" style="background:${m.color}"></div>
+            <div class="busy-main">
+              <div class="busy-name">${escapeHtml(m.name)}
+                <span class="busy-actions">
+                  <button class="busy-action" type="button" data-action="edit" aria-label="Редактировать">✎</button>
+                  <button class="busy-action" type="button" data-action="delete" aria-label="Удалить">×</button>
+                </span>
+              </div>
+              <div class="busy-sub">${escapeHtml(formatTimeRange(ev.start_time, ev.end_time))} • ${escapeHtml(ev.title)}</div>
+            </div>
+          `;
+
+          row.querySelector('[data-action="edit"]')?.addEventListener("click", (e) => {
+            e.stopPropagation();
+            state.editingEventId = ev.id;
+            openAddSheet(new Date(ev.date));
+            $("eventTitle").value = ev.title || "";
+            $("eventDate").value = ev.date || iso;
+            $("eventTimeStart").value = ev.start_time || "";
+            $("eventTimeEnd").value = ev.end_time || "";
+          });
+
+          row.querySelector('[data-action="delete"]')?.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const ok = window.confirm("Уверены что хотите удалить событие?\n\nДа — удалить\nНет — отмена");
+            if(!ok) return;
+            deleteEventById(ev.id);
+            render();
+            openBusySheet(date);
+          });
+
+          container.appendChild(row);
+        }
+        continue;
+      }
+
+      // Others: read-only
       const lines = items
         .map(ev => `${escapeHtml(formatTimeRange(ev.start_time, ev.end_time))} • ${escapeHtml(ev.title)}`)
         .join("<br/>");
@@ -694,15 +792,25 @@ function createDayCell(date, otherMonth){
       return;
     }
 
-    addEvent({
-      id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
-      user_id: CURRENT_USER_ID,
-      title,
-      date,
-      start_time: start,
-      end_time: end,
-      created_at: new Date().toISOString(),
-    });
+    if(state.editingEventId){
+      updateEventById(state.editingEventId, {
+        title,
+        date,
+        start_time: start,
+        end_time: end,
+      });
+      state.editingEventId = null;
+    } else {
+      addEvent({
+        id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+        user_id: CURRENT_USER_ID,
+        title,
+        date,
+        start_time: start,
+        end_time: end,
+        created_at: new Date().toISOString(),
+      });
+    }
 
     closeAllSheets();
     render();
@@ -719,6 +827,20 @@ function createDayCell(date, otherMonth){
     setTab("calendar");
 
     if (window.lucide) window.lucide.createIcons();
+
+    // From Profile “Ближайшее” -> jump to date
+    document.addEventListener("calendar:navigate", (e) => {
+      const iso = e?.detail?.iso;
+      if(!iso) return;
+      const d = new Date(iso + "T00:00:00");
+      setTab("calendar");
+      state.viewMode = "month";
+      state.weekStartDate = null;
+      state.selectedDate = startOfDay(d);
+      state.currentMonth = startOfMonth(d);
+      render();
+      requestAnimationFrame(() => openBusySheet(d));
+    });
 
     // settings events from profile.js
     document.addEventListener("settings:weekStart", (e) => {
@@ -738,42 +860,47 @@ function createDayCell(date, otherMonth){
     $("nextMonth").addEventListener("click", nextMonth);
     
     // quick chips
+    // quick chips -> open add-event sheet for the chosen day
     $("chipToday")?.addEventListener("click", () => {
+      const d = startOfDay(new Date());
       state.viewMode = "month";
       state.weekStartDate = null;
-      state.selectedDate = startOfDay(new Date());
-      state.currentMonth = startOfMonth(state.selectedDate);
-      // жёстко возвращаем DOM в month-mode
-      ensureMonthDom();
-      renderMonth();
-      renderUpcoming();
+      state.selectedDate = d;
+      state.currentMonth = startOfMonth(d);
+      render();
       setActiveChip("chipToday");
+      requestAnimationFrame(() => openAddSheet(d));
     });
+
     $("chipTomorrow")?.addEventListener("click", () => {
+      const d0 = new Date();
+      d0.setDate(d0.getDate()+1);
+      const d = startOfDay(d0);
       state.viewMode = "month";
       state.weekStartDate = null;
-      const d = new Date();
-      d.setDate(d.getDate()+1);
-      state.selectedDate = startOfDay(d);
-      state.currentMonth = startOfMonth(state.selectedDate);
-      ensureMonthDom();
-      renderMonth();
-      renderUpcoming();
+      state.selectedDate = d;
+      state.currentMonth = startOfMonth(d);
+      render();
       setActiveChip("chipTomorrow");
+      requestAnimationFrame(() => openAddSheet(d));
     });
+
     $("chipWeekend")?.addEventListener("click", () => {
-      const d = new Date();
-      const dow = d.getDay()===0 ? 7 : d.getDay();
-      const add = (6 - dow); // to Saturday
-      d.setDate(d.getDate()+add);
-      state.selectedDate = startOfDay(d);
+      const base = new Date();
+      const jsDow = base.getDay(); // 0=Sun
+      const d0 = new Date(base);
+      // If already weekend -> today, else -> ближайшая суббота
+      if(jsDow !== 0 && jsDow !== 6){
+        d0.setDate(d0.getDate() + (6 - jsDow));
+      }
+      const d = startOfDay(d0);
       state.viewMode = "month";
       state.weekStartDate = null;
-      state.currentMonth = startOfMonth(state.selectedDate);
-      ensureMonthDom();
-      renderMonth();
-      renderUpcoming();
+      state.selectedDate = d;
+      state.currentMonth = startOfMonth(d);
+      render();
       setActiveChip("chipWeekend");
+      requestAnimationFrame(() => openAddSheet(d));
     });
     $("chipWeek")?.addEventListener("click", () => {
       if(state.viewMode === "week"){
