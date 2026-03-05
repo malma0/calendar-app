@@ -1,15 +1,31 @@
-export const API_BASE = "/api";
+// If you run frontend and backend on different origins (different ports),
+// you can define window.API_BASE in index.html, e.g.:
+//   window.API_BASE = "http://localhost:8080/api";
+export const API_BASE = (typeof window !== "undefined" && window.API_BASE) ? window.API_BASE : "/api";
 
 const TOKEN_KEY = "auth_token";
+let memoryToken = null;
+
+function safeGet(key){
+  try{ return localStorage.getItem(key); }catch{ return null; }
+}
+function safeSet(key, val){
+  try{ localStorage.setItem(key, val); }catch{}
+}
+function safeRemove(key){
+  try{ localStorage.removeItem(key); }catch{}
+}
 
 export function getToken(){
-  return localStorage.getItem(TOKEN_KEY);
+  return safeGet(TOKEN_KEY) || memoryToken;
 }
 export function setToken(token){
-  localStorage.setItem(TOKEN_KEY, token);
+  memoryToken = token;
+  safeSet(TOKEN_KEY, token);
 }
 export function clearToken(){
-  localStorage.removeItem(TOKEN_KEY);
+  memoryToken = null;
+  safeRemove(TOKEN_KEY);
 }
 
 export async function apiFetch(path, { method="GET", body, headers={} } = {}){
@@ -62,4 +78,41 @@ export function getMe(){
 
 export function createGroup(name, description=null){
   return apiFetch('/groups', { method:'POST', body:{ name, description } });
+}
+
+export async function login(username, password){
+  // /api/token expects application/x-www-form-urlencoded (OAuth2PasswordRequestForm)
+  const body = new URLSearchParams();
+  body.set("username", username);
+  body.set("password", password);
+
+  const res = await fetch(`${API_BASE}/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body
+  });
+
+  if(!res.ok){
+    let msg = `HTTP ${res.status}`;
+    try{
+      const data = await res.json();
+      if(data?.detail) msg = data.detail;
+    }catch{}
+    throw new Error(msg);
+  }
+
+  const data = await res.json(); // { access_token, token_type }
+  setToken(data.access_token);
+  return data;
+}
+
+export function logout(){
+  clearToken();
+}
+
+export function register({ email, username, password, full_name=null }){
+  return apiFetch("/register", {
+    method: "POST",
+    body: { email, username, password, full_name }
+  });
 }

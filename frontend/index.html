@@ -6,7 +6,6 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="css/style.css?v=5008" />
 <title>Calendar App</title>
-  <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 
 <body>
@@ -441,6 +440,35 @@
     </div>
 
 
+
+<!-- ===== AUTH ===== -->
+<div class="fullscreen" id="authScreen" hidden>
+  <header class="fs-header">
+    <div class="fs-title" id="authTitle">Вход</div>
+  </header>
+
+  <div class="fs-body">
+    <div class="card">
+      <div class="hint" id="authError" style="display:none; margin-bottom:10px; color: var(--danger);"></div>
+
+      <label class="field-label">Username</label>
+      <input class="text-input" id="authUsername" type="text" placeholder="например: matthewmal"/>
+
+      <label class="field-label" id="authEmailLabel" style="margin-top:14px; display:none;">Email</label>
+      <input class="text-input" id="authEmail" type="email" placeholder="you@mail.com" style="display:none;"/>
+
+      <label class="field-label" style="margin-top:14px;">Пароль</label>
+      <input class="text-input" id="authPassword" type="password" placeholder="••••••••"/>
+
+      <button class="primary-btn" id="authSubmitBtn" style="margin-top:14px;">Войти</button>
+
+      <button class="chip" id="authToggleModeBtn" type="button" style="margin-top:12px;">
+        Нет аккаунта? Регистрация
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== TABBAR ===== -->
 <nav class="tabbar" role="tablist" aria-label="Навигация">
     <button class="tab" data-tab="friends" aria-selected="false">
@@ -461,17 +489,22 @@
 
   </div>
 
-  <script src="js/app.js?v=5007"></script>
 
-  <script type="module">
-    import { initFriends } from "./js/friends.js?v=5007";
-    initFriends();
-</script>
-
-  <script type="module">
-    import { initProfile } from "./js/profile.js?v=5007";
-    initProfile();
+  <script>
+    // Dev helper: when frontend is served on a different port than backend,
+    // point API calls to the backend port (default 8080).
+    // You can override by defining window.API_BASE yourself.
+    if(!window.API_BASE && location.port && location.port !== "8080"){
+      window.API_BASE = `http://${location.hostname}:8080/api`;
+    }
   </script>
 
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script defer src="js/auth-ui.js?v=5009"></script>
+  <script defer src="js/friends.js?v=5007"></script>
+  <script defer src="js/profile.js?v=5007"></script>
+  <script defer src="js/app.js?v=5007"></script>
 </body>
 </html>
