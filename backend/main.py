@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date as dt_date, timedelta
+import secrets
+from datetime import date as dt_date, datetime, timedelta
 from typing import List, Optional
 
 from fastapi import FastAPI, Depends, HTTPException, status, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 import models
@@ -16,18 +18,36 @@ from database import engine, get_db
 
 models.Base.metadata.create_all(bind=engine)
 
+def _ensure_user_reset_columns() -> None:
+    """Small SQLite migration helper (dev).
+    If DB was created before reset fields were added, we add them with ALTER TABLE.
+    """
+    try:
+        with engine.begin() as conn:
+            cols = conn.execute(text("PRAGMA table_info(users)")).fetchall()
+            col_names = {row[1] for row in cols}
+            if "reset_token" not in col_names:
+                conn.execute(text("ALTER TABLE users ADD COLUMN reset_token VARCHAR"))
+            if "reset_token_expires_at" not in col_names:
+                conn.execute(text("ALTER TABLE users ADD COLUMN reset_token_expires_at DATETIME"))
+    except Exception:
+        # Don't block startup in dev.
+        pass
+
+
 app = FastAPI(title="Календарь совместных планов API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:8080",
-        "http://127.0.0.1:8080",
-    ],
+    allow_origin_regex=".*",  # dev: разрешаем открывать с любого хоста (телефон/ПК)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+def _startup_migrations():
+    _ensure_user_reset_columns()
 
 
 # ===== AUTH =====
@@ -52,6 +72,36 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db.refresh(db_user)
     return db_user
 
+@app.post("/api/password/request")
+def request_password_reset(payload: schemas.PasswordResetRequest, db: Session = Depends(get_db)):
+    """MVP password reset.
+
+    В проде это должен быть email со ссылкой/кодом. Сейчас SMTP нет, поэтому
+    мы возвращаем токен в ответе, чтобы можно было протестировать функционал.
+    """
+    user = db.query(models.User).filter(models.User.email == payload.email).first()
+
+    # Всегда отвечаем "успехом", чтобы не палить, есть ли такой email
+    if not user:
+        return {"detail": "Если email существует, код восстановления создан."}
+
+    token = secrets.token_urlsafe(32)
+    user.reset_token = token
+    user.reset_token_expires_at = datetime.utcnow() + timedelta(minutes=30)
+    db.commit()
+    return {"detail": "Код восстановления создан.", "token": token, "expires_in_minutes": 30}
+
+@app.post("/api/password/reset")
+def confirm_password_reset(payload: schemas.PasswordResetConfirm, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.reset_token == payload.token).first()
+    if not user or not user.reset_token_expires_at or user.reset_token_expires_at < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Неверный или просроченный токен")
+
+    user.hashed_password = get_password_hash(payload.new_password)
+    user.reset_token = None
+    user.reset_token_expires_at = None
+    db.commit()
+    return {"detail": "Пароль обновлен"}
 
 @app.post("/api/token", response_model=schemas.Token)
 def login(
@@ -59,7 +109,13 @@ def login(
     db: Session = Depends(get_db),
 ):
     # OAuth2PasswordRequestForm использует поле "username" (мы кладем туда username)
-    user = db.query(models.User).filter(models.User.username == form_data.username).first()
+    # login by username or email
+    identifier = (form_data.username or "").strip()
+    # Разрешаем вход и по email тоже
+    if "@" in identifier:
+        user = db.query(models.User).filter(models.User.email == identifier).first()
+    else:
+        user = db.query(models.User).filter(models.User.username == identifier).first()
 
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
@@ -74,11 +130,9 @@ def login(
     )
     return schemas.Token(access_token=token)
 
-
 @app.get("/api/users/me", response_model=schemas.UserResponse)
 def read_users_me(current_user: models.User = Depends(get_current_user)):
     return current_user
-
 
 # ===== GROUPS =====
 @app.post("/api/groups", response_model=schemas.GroupResponse)
@@ -103,7 +157,6 @@ def create_group(
     db.refresh(db_group)
     return db_group
 
-
 @app.get("/api/groups", response_model=List[schemas.GroupResponse])
 def get_my_groups(
     current_user: models.User = Depends(get_current_user),
@@ -126,7 +179,6 @@ def get_group(
         raise HTTPException(status_code=404, detail="Группа не найдена или вы не состоите в ней")
     return group
 
-
 @app.get("/api/groups/{group_id}/members", response_model=List[schemas.GroupMember])
 def get_group_members(
     group_id: int,
@@ -141,7 +193,6 @@ def get_group_members(
     if not group:
         raise HTTPException(status_code=404, detail="Группа не найдена или вы не состоите в ней")
     return group.members
-
 
 @app.put("/api/groups/{group_id}", response_model=schemas.GroupResponse)
 def update_group(
@@ -166,7 +217,6 @@ def update_group(
     db.commit()
     db.refresh(group)
     return group
-
 
 @app.put("/api/users/me/color", response_model=schemas.UserResponse)
 def update_my_color(
@@ -214,7 +264,6 @@ def create_event(
     db.refresh(db_event)
     return db_event
 
-
 @app.get("/api/events", response_model=List[schemas.EventResponse])
 def get_events(
     group_id: Optional[int] = Query(default=None),
@@ -239,12 +288,10 @@ def get_events(
 
     return q.order_by(models.Event.date.asc(), models.Event.start_time.asc().nulls_last()).all()
 
-
 # ===== HEALTH =====
 @app.get("/")
 def read_root():
     return {"message": "Календарь совместных планов API работает!"}
-
 
 @app.get("/api/health")
 def health_check():

@@ -92,3 +92,10 @@ class GroupMember(BaseModel):
 
 class UserColorUpdate(BaseModel):
     color: str = Field(min_length=4, max_length=20)  # например "#RRGGBB"
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str

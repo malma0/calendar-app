@@ -1,21 +1,21 @@
 (() => {
   "use strict";
 
-  // Some browsers/extensions (especially on mobile) can block access to
-  // localStorage in certain contexts. Use safe wrappers so the UI still works.
-  function lsGet(key){
-    try{ return localStorage.getItem(key); }catch{ return null; }
-  }
-  function lsSet(key, val){
-    try{ localStorage.setItem(key, val); }catch{}
-  }
-
   const STORAGE_KEY = "calendar_events_v4";
+
+  // === AUTH HELPERS ===
+  function getAuthToken(){
+    return localStorage.getItem("auth_token") || sessionStorage.getItem("auth_token") || "";
+  }
+  function authHeaders(){
+    const t = getAuthToken();
+    return t ? { "Authorization": `Bearer ${t}` } : {};
+  }
 
   // Настройки отображения (пока локально). Меняются из profile.js через события.
   const settings = {
-    weekStart: lsGet("weekStart") || "mon", // "mon" | "sun"
-    timeFormat: lsGet("timeFormat") || "24", // "24" | "12"
+    weekStart: localStorage.getItem("weekStart") || "mon", // "mon" | "sun"
+    timeFormat: localStorage.getItem("timeFormat") || "24", // "24" | "12"
   };
 
   // Временно демо-участники. Потом подцепим из бэка группы.
@@ -72,9 +72,7 @@
     list.innerHTML = `<div class="color-hint">Загружаем группы…</div>`;
     let groups = [];
     try{
-      const token = lsGet("auth_token");
-      const apiBase = (typeof window !== "undefined" && window.API_BASE) ? window.API_BASE : "/api";
-      const res = await fetch(`${apiBase}/groups`, { headers: token ? { "Authorization": `Bearer ${token}` } : {} });
+	      const res = await fetch("/api/groups", { headers: { ...authHeaders() } });
       if(res.ok) groups = await res.json();
     }catch{}
     if(!Array.isArray(groups) || !groups.length){
@@ -183,7 +181,7 @@ function pad2(n){ return String(n).padStart(2,"0"); }
 
   function loadEvents(){
     try{
-      const raw = lsGet(STORAGE_KEY);
+      const raw = localStorage.getItem(STORAGE_KEY);
       if(!raw) return [];
       const data = JSON.parse(raw);
       return Array.isArray(data) ? data : [];
@@ -191,7 +189,7 @@ function pad2(n){ return String(n).padStart(2,"0"); }
       return [];
     }
   }
-  function saveEvents(list){ lsSet(STORAGE_KEY, JSON.stringify(list)); }
+  function saveEvents(list){ localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }
   function addEvent(ev){ const all = loadEvents(); all.push(ev); saveEvents(all); }
 
   function updateEventById(id, patch){

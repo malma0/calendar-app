@@ -1,31 +1,26 @@
-// If you run frontend and backend on different origins (different ports),
-// you can define window.API_BASE in index.html, e.g.:
-//   window.API_BASE = "http://localhost:8080/api";
-export const API_BASE = (typeof window !== "undefined" && window.API_BASE) ? window.API_BASE : "/api";
+const API_PORT = 8080;
+const API_ORIGIN = `${window.location.protocol}//${window.location.hostname}:${API_PORT}`;
+export const API_BASE = `${API_ORIGIN}/api`;
 
 const TOKEN_KEY = "auth_token";
-let memoryToken = null;
-
-function safeGet(key){
-  try{ return localStorage.getItem(key); }catch{ return null; }
-}
-function safeSet(key, val){
-  try{ localStorage.setItem(key, val); }catch{}
-}
-function safeRemove(key){
-  try{ localStorage.removeItem(key); }catch{}
-}
 
 export function getToken(){
-  return safeGet(TOKEN_KEY) || memoryToken;
+  return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
 }
-export function setToken(token){
-  memoryToken = token;
-  safeSet(TOKEN_KEY, token);
+
+export function setToken(token, persist = true){
+  if(persist){
+    localStorage.setItem(TOKEN_KEY, token);
+    sessionStorage.removeItem(TOKEN_KEY);
+  }else{
+    sessionStorage.setItem(TOKEN_KEY, token);
+    localStorage.removeItem(TOKEN_KEY);
+  }
 }
+
 export function clearToken(){
-  memoryToken = null;
-  safeRemove(TOKEN_KEY);
+  localStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
 }
 
 export async function apiFetch(path, { method="GET", body, headers={} } = {}){
@@ -55,6 +50,42 @@ export async function apiFetch(path, { method="GET", body, headers={} } = {}){
   return text ? JSON.parse(text) : null;
 }
 
+// ===== AUTH =====
+export async function login(identifier, password, persist = true){
+  const form = new URLSearchParams();
+  // backend принимает username ИЛИ email в поле "username"
+  form.set("username", identifier);
+  form.set("password", password);
+
+  const res = await fetch(`${API_BASE}/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: form.toString(),
+  });
+
+  if(!res.ok){
+    let msg = `HTTP ${res.status}`;
+    try{ const data = await res.json(); if(data?.detail) msg = data.detail; }catch{}
+    throw new Error(msg);
+  }
+
+  const data = await res.json();
+  setToken(data.access_token, persist);
+  return data;
+}
+
+export function register(username, email, password){
+  return apiFetch("/register", { method:"POST", body:{ username, email, password } });
+}
+
+export function requestPasswordReset(email){
+  return apiFetch("/password/request", { method:"POST", body:{ email } });
+}
+
+export function confirmPasswordReset(token, new_password){
+  return apiFetch("/password/reset", { method:"POST", body:{ token, new_password } });
+}
+
 export function getMyGroups(){
   return apiFetch("/groups");
 }
@@ -78,41 +109,4 @@ export function getMe(){
 
 export function createGroup(name, description=null){
   return apiFetch('/groups', { method:'POST', body:{ name, description } });
-}
-
-export async function login(username, password){
-  // /api/token expects application/x-www-form-urlencoded (OAuth2PasswordRequestForm)
-  const body = new URLSearchParams();
-  body.set("username", username);
-  body.set("password", password);
-
-  const res = await fetch(`${API_BASE}/token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body
-  });
-
-  if(!res.ok){
-    let msg = `HTTP ${res.status}`;
-    try{
-      const data = await res.json();
-      if(data?.detail) msg = data.detail;
-    }catch{}
-    throw new Error(msg);
-  }
-
-  const data = await res.json(); // { access_token, token_type }
-  setToken(data.access_token);
-  return data;
-}
-
-export function logout(){
-  clearToken();
-}
-
-export function register({ email, username, password, full_name=null }){
-  return apiFetch("/register", {
-    method: "POST",
-    body: { email, username, password, full_name }
-  });
 }

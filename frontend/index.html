@@ -6,6 +6,7 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="css/style.css?v=5008" />
 <title>Calendar App</title>
+  <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 
 <body>
@@ -440,35 +441,6 @@
     </div>
 
 
-
-<!-- ===== AUTH ===== -->
-<div class="fullscreen" id="authScreen" hidden>
-  <header class="fs-header">
-    <div class="fs-title" id="authTitle">Вход</div>
-  </header>
-
-  <div class="fs-body">
-    <div class="card">
-      <div class="hint" id="authError" style="display:none; margin-bottom:10px; color: var(--danger);"></div>
-
-      <label class="field-label">Username</label>
-      <input class="text-input" id="authUsername" type="text" placeholder="например: matthewmal"/>
-
-      <label class="field-label" id="authEmailLabel" style="margin-top:14px; display:none;">Email</label>
-      <input class="text-input" id="authEmail" type="email" placeholder="you@mail.com" style="display:none;"/>
-
-      <label class="field-label" style="margin-top:14px;">Пароль</label>
-      <input class="text-input" id="authPassword" type="password" placeholder="••••••••"/>
-
-      <button class="primary-btn" id="authSubmitBtn" style="margin-top:14px;">Войти</button>
-
-      <button class="chip" id="authToggleModeBtn" type="button" style="margin-top:12px;">
-        Нет аккаунта? Регистрация
-      </button>
-    </div>
-  </div>
-</div>
-
 <!-- ===== TABBAR ===== -->
 <nav class="tabbar" role="tablist" aria-label="Навигация">
     <button class="tab" data-tab="friends" aria-selected="false">
@@ -489,22 +461,116 @@
 
   </div>
 
+	  <!-- AUTH OVERLAY (Login / Register / Reset password) -->
+	  <div id="authOverlay" class="auth-overlay hidden" aria-hidden="true">
+		<div class="auth-card">
+		  <!-- Вкладки убраны: переход к регистрации/сбросу пароля осуществляется через ссылки в форме -->
 
-  <script>
-    // Dev helper: when frontend is served on a different port than backend,
-    // point API calls to the backend port (default 8080).
-    // You can override by defining window.API_BASE yourself.
-    if(!window.API_BASE && location.port && location.port !== "8080"){
-      window.API_BASE = `http://${location.hostname}:8080/api`;
-    }
-  </script>
+		  <div class="auth-body">
+			<div class="auth-panel" data-panel="login">
+			  <h2>Вход</h2>
+			  <label>Логин или email
+				<input id="loginIdentifier" type="text" autocomplete="username" placeholder="например: matthewmal или mail@example.com" />
+			  </label>
+			  <label>Пароль
+				<input id="loginPassword" type="password" autocomplete="current-password" />
+			  </label>
+			  <label class="auth-checkbox">
+				<input id="rememberMe" type="checkbox" checked />
+				<span>Запомнить меня</span>
+			  </label>
+			  <button id="loginBtn" type="button" class="auth-primary">Войти</button>
+			  <div class="auth-links-row">
+				<a href="#" id="openResetLink" class="auth-link">Забыли пароль?</a>
+				<a href="#" id="openRegisterLink" class="auth-link">Регистрация</a>
+			  </div>
+			</div>
 
+			<div class="auth-panel hidden" data-panel="register">
+			  <h2>Регистрация</h2>
+			  <label>Логин
+				<input id="regUsername" type="text" autocomplete="username" placeholder="например: matthewmal" />
+			  </label>
+			  <label>Email
+				<input id="regEmail" type="email" autocomplete="email" placeholder="mail@example.com" />
+			  </label>
+			  <label>Пароль
+				<input id="regPassword" type="password" autocomplete="new-password" />
+			  </label>
+			  <button id="registerBtn" type="button" class="auth-primary">Создать аккаунт</button>
+			  <div class="auth-links-row center">
+				<a href="#" id="backToLoginFromRegister" class="auth-link">Уже есть аккаунт? Войти</a>
+			  </div>
+			</div>
 
-  <!-- Scripts -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script defer src="js/auth-ui.js?v=5009"></script>
-  <script defer src="js/friends.js?v=5007"></script>
-  <script defer src="js/profile.js?v=5007"></script>
-  <script defer src="js/app.js?v=5007"></script>
+			<div class="auth-panel hidden" data-panel="reset">
+  <h2>Сброс пароля</h2>
+  <div class="auth-small" id="resetSubtext">Введите email, указанный при регистрации.</div>
+
+  <!-- Шаг 1: запрос кода -->
+  <div id="resetStepRequest">
+    <label>Email
+      <input id="resetEmail" type="email" autocomplete="email" placeholder="mail@example.com" />
+    </label>
+    <button id="resetRequestBtn" type="button" class="auth-secondary">Получить код</button>
+    <div class="auth-links-row center">
+      <a href="#" id="backToLoginFromReset" class="auth-link">Назад к входу</a>
+    </div>
+  </div>
+
+  <!-- Шаг 2: ввод кода -->
+  <div id="resetStepVerify" class="hidden">
+    <div id="resetTokenBox" class="auth-token"></div>
+
+    <label>Код
+      <input id="resetToken" type="text" placeholder="например: 123456" inputmode="numeric" />
+    </label>
+
+    <button id="resetVerifyBtn" type="button" class="auth-secondary">Подтвердить код</button>
+
+    <div class="auth-links-col center">
+      <a href="#" id="resetResendBtn" class="auth-link">Отправить код ещё раз</a>
+      <a href="#" id="resetChangeEmailBtn" class="auth-link">Изменить email</a>
+    </div>
+  </div>
+
+  <!-- Шаг 3: новый пароль -->
+  <div id="resetStepSet" class="hidden">
+    <div class="auth-small">Придумайте новый пароль.</div>
+
+    <label>Новый пароль
+      <input id="resetNewPassword" type="password" autocomplete="new-password" />
+    </label>
+
+    <label>Повторите пароль
+      <input id="resetNewPassword2" type="password" autocomplete="new-password" />
+    </label>
+
+    <button id="resetConfirmBtn" type="button" class="auth-primary">Сменить пароль</button>
+
+    <div class="auth-links-row center">
+      <a href="#" id="backToLoginFromReset2" class="auth-link">Назад к входу</a>
+    </div>
+  </div>
+</div>
+
+			<div id="authError" class="auth-error hidden"></div>
+		  </div>
+		</div>
+	  </div>
+
+	<script src="js/app.js?v=5007"></script>
+	<script type="module" src="./js/auth-ui.js?v=5007"></script>
+
+	  <script type="module">
+	    import { initFriends } from "./js/friends.js?v=5007";
+	    window.addEventListener("auth:ready", () => initFriends(), { once: true });
+	</script>
+
+	  <script type="module">
+	    import { initProfile } from "./js/profile.js?v=5007";
+	    window.addEventListener("auth:ready", () => initProfile(), { once: true });
+	  </script>
+
 </body>
 </html>

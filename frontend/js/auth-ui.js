@@ -1,178 +1,276 @@
-(() => {
-  "use strict";
+import {
+  getToken,
+  clearToken,
+  login,
+  register,
+  requestPasswordReset,
+  confirmPasswordReset,
+  apiFetch,
+} from "./api.js?v=5007";
 
-  const STORAGE_KEY = "auth_token";
+function $(id){ return document.getElementById(id); }
 
-  function lsGet(key){ try{ return localStorage.getItem(key); } catch { return null; } }
-  function lsSet(key,val){ try{ localStorage.setItem(key,val); } catch {} }
-  function lsRemove(key){ try{ localStorage.removeItem(key); } catch {} }
+function showError(msg){
+  const el = $("authError");
+  el.textContent = msg;
+  el.classList.remove("hidden");
+}
+function clearError(){
+  const el = $("authError");
+  el.textContent = "";
+  el.classList.add("hidden");
+}
 
-  function $(id){ return document.getElementById(id); }
+function showOverlay(){
+  const ov = $("authOverlay");
+  ov.classList.remove("hidden");
+  ov.setAttribute("aria-hidden", "false");
+}
+function hideOverlay(){
+  const ov = $("authOverlay");
+  ov.classList.add("hidden");
+  ov.setAttribute("aria-hidden", "true");
+}
 
-  function getApiBase(){
-    // If user defined window.API_BASE use it, else default to same host:8080/api (works when frontend served on 5500)
-    if (window.API_BASE) return window.API_BASE;
-    const { protocol, hostname } = window.location;
-    // If frontend is opened from same port as backend, use /api
-    if (window.location.port === "8080") return `${protocol}//${hostname}:8080/api`;
-    return `${protocol}//${hostname}:8080/api`;
-  }
+let currentTab = "login";
 
-  async function apiFetch(path, opts={}){
-    const apiBase = getApiBase();
-    const url = `${apiBase}${path.startsWith("/") ? "" : "/"}${path}`;
-    const headers = Object.assign({}, opts.headers || {});
-    const token = lsGet(STORAGE_KEY);
-    if(token) headers["Authorization"] = `Bearer ${token}`;
-    if(opts.json){
-      headers["Content-Type"] = "application/json";
-      opts.body = JSON.stringify(opts.json);
-    }
-    const res = await fetch(url, { ...opts, headers });
-    return res;
-  }
+function switchTab(tab){
+  currentTab = tab;
+  document.querySelectorAll(".auth-panel").forEach(p => {
+    p.classList.toggle("hidden", p.dataset.panel !== tab);
+  });
+  clearError();
+}
 
-  function showAuth(){
-    const s = $("authScreen");
-    if(s) s.hidden = false;
-  }
-  function hideAuth(){
-    const s = $("authScreen");
-    if(s) s.hidden = true;
-  }
-
-  async function checkToken(){
-    const token = lsGet(STORAGE_KEY);
-    if(!token) return false;
-    try{
-      const res = await apiFetch("/users/me", { method: "GET" });
-      return res.ok;
-    }catch{
-      return false;
-    }
-  }
-
-  async function doLogin(username, password){
-    const apiBase = getApiBase();
-    const body = new URLSearchParams();
-    body.set("username", username);
-    body.set("password", password);
-
-    const res = await fetch(`${apiBase}/token`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body
-    });
-
-    if(!res.ok){
-      let msg = `HTTP ${res.status}`;
-      try{
-        const data = await res.json();
-        if(data?.detail) msg = data.detail;
-      }catch{}
-      throw new Error(msg);
-    }
-    const data = await res.json();
-    const token = data.access_token;
-    if(!token) throw new Error("Не получили токен");
-    lsSet(STORAGE_KEY, token);
+async function verifyToken(){
+  const t = getToken();
+  if(!t) return false;
+  try{
+    await apiFetch("/users/me");
     return true;
-  }
-
-  async function doRegister(email, username, password, full_name=null){
-    const res = await apiFetch("/register", {
-      method: "POST",
-      json: { email, username, password, full_name }
-    });
-    if(!res.ok){
-      let msg = `HTTP ${res.status}`;
-      try{
-        const data = await res.json();
-        if(data?.detail) msg = (typeof data.detail === "string") ? data.detail : JSON.stringify(data.detail);
-      }catch{}
-      throw new Error(msg);
-    }
-    return true;
-  }
-
-  async function initAuth(){
-    const screen = $("authScreen");
-    if(!screen) return true; // no auth UI in DOM, don't block
-
-    const title = $("authTitle");
-    const err = $("authError");
-    const u = $("authUsername");
-    const eLabel = $("authEmailLabel");
-    const e = $("authEmail");
-    const p = $("authPassword");
-    const submit = $("authSubmitBtn");
-    const toggle = $("authToggleModeBtn");
-
-    let mode = "login";
-
-    function setError(msg){
-      if(!err) return;
-      err.textContent = msg || "";
-      err.style.display = msg ? "" : "none";
-    }
-
-    function setMode(next){
-      mode = next;
-      setError("");
-      const isReg = mode === "register";
-      if(title) title.textContent = isReg ? "Регистрация" : "Вход";
-      if(submit) submit.textContent = isReg ? "Создать аккаунт" : "Войти";
-      if(toggle) toggle.textContent = isReg ? "Уже есть аккаунт? Вход" : "Нет аккаунта? Регистрация";
-      if(eLabel) eLabel.style.display = isReg ? "" : "none";
-      if(e) e.style.display = isReg ? "" : "none";
-    }
-
-    // bootstrap
-    const ok = await checkToken();
-    if(ok){
-      hideAuth();
-      return true;
-    } else {
-      lsRemove(STORAGE_KEY);
-      showAuth();
-    }
-
-    toggle?.addEventListener("click", () => setMode(mode === "login" ? "register" : "login"));
-    submit?.addEventListener("click", async () => {
-      try{
-        setError("");
-        const username = (u?.value || "").trim();
-        const password = (p?.value || "").trim();
-        if(!username || !password) throw new Error("Заполни username и пароль");
-
-        if(mode === "register"){
-          const email = (e?.value || "").trim();
-          if(!email) throw new Error("Заполни email");
-          await doRegister(email, username, password);
-        }
-        await doLogin(username, password);
-        hideAuth();
-        window.dispatchEvent(new CustomEvent("auth:changed"));
-      }catch(ex){
-        setError(ex?.message || "Ошибка");
-      }
-    });
-
-    // allow Enter key
-    screen.addEventListener("keydown", (ev) => {
-      if(ev.key === "Enter"){
-        submit?.click();
-      }
-    });
-
-    // expose helpers
-    window.logout = () => { lsRemove(STORAGE_KEY); window.dispatchEvent(new CustomEvent("auth:changed")); showAuth(); };
-
+  }catch{
+    clearToken();
     return false;
   }
+}
 
-  document.addEventListener("DOMContentLoaded", () => { initAuth(); });
+async function onLogin(){
+  clearError();
+  const id = $("loginIdentifier").value.trim();
+  const pass = $("loginPassword").value;
+  const persist = $("rememberMe").checked;
+  if(!id || !pass){
+    showError("Введите логин/email и пароль");
+    return;
+  }
+  try{
+    await login(id, pass, persist);
+    hideOverlay();
+    window.dispatchEvent(new Event("auth:ready"));
+  }catch(e){
+    showError(e.message || "Ошибка входа");
+  }
+}
 
-  // also expose if other scripts need it
-  window.initAuth = initAuth;
+async function onRegister(){
+  clearError();
+  const username = $("regUsername").value.trim();
+  const email = $("regEmail").value.trim();
+  const password = $("regPassword").value;
+  if(!username || !email || !password){
+    showError("Заполните логин, email и пароль");
+    return;
+  }
+  try{
+    await register(username, email, password);
+    // after successful registration: auto-login
+    await login(email, password, true);
+    hideOverlay();
+    window.dispatchEvent(new Event("auth:ready"));
+  }catch(e){
+    showError(e.message || "Ошибка регистрации");
+  }
+}
+
+
+// --- Пошаговый сброс пароля ---
+let resetFlow = { email: "", token: "", step: "request" }; // request | verify | set
+
+function setResetStep(step){
+  resetFlow.step = step;
+  const req = $("resetStepRequest");
+  const ver = $("resetStepVerify");
+  const set = $("resetStepSet");
+
+  if(req) req.classList.toggle("hidden", step !== "request");
+  if(ver) ver.classList.toggle("hidden", step !== "verify");
+  if(set) set.classList.toggle("hidden", step !== "set");
+}
+
+function resetClearTokenUI(){
+  const box = $("resetTokenBox");
+  if(box){
+    box.textContent = "";
+    box.classList.add("hidden");
+  }
+  const tokenInput = $("resetToken");
+  if(tokenInput) tokenInput.value = "";
+}
+
+async function onResetRequest(){
+  try{
+    showError(null);
+
+    const email = $("resetEmail").value.trim();
+    if(!email) return showError("Введите email");
+
+    resetFlow.email = email;
+
+    const res = await apiPasswordRequest(email);
+    // backend возвращает { ok: true, token: "..." } (в демо токен показываем)
+    resetFlow.token = res?.token || "";
+
+    // Переходим к шагу ввода кода
+    const tokenBox = $("resetTokenBox");
+    if(tokenBox){
+      if(resetFlow.token){
+        tokenBox.textContent = `Код отправлен на почту. Демо‑код: ${resetFlow.token}`;
+        tokenBox.classList.remove("hidden");
+      }else{
+        tokenBox.textContent = "Код отправлен на почту. Введите его ниже.";
+        tokenBox.classList.remove("hidden");
+      }
+    }
+
+    resetClearTokenUI();
+    setResetStep("verify");
+
+    // Фокус на поле кода
+    $("resetToken")?.focus();
+  }catch(err){
+    showError(err?.message || "Ошибка");
+  }
+}
+
+async function onResetResend(){
+  try{
+    showError(null);
+    const email = resetFlow.email || $("resetEmail").value.trim();
+    if(!email) return showError("Введите email");
+
+    resetFlow.email = email;
+    const res = await apiPasswordRequest(email);
+    resetFlow.token = res?.token || "";
+
+    const tokenBox = $("resetTokenBox");
+    if(tokenBox){
+      tokenBox.textContent = resetFlow.token
+        ? `Код отправлен ещё раз. Демо‑код: ${resetFlow.token}`
+        : "Код отправлен ещё раз. Введите его ниже.";
+      tokenBox.classList.remove("hidden");
+    }
+
+    resetClearTokenUI();
+    setResetStep("verify");
+    $("resetToken")?.focus();
+  }catch(err){
+    showError(err?.message || "Ошибка");
+  }
+}
+
+function onResetVerify(){
+  showError(null);
+  const typed = ($("resetToken")?.value || "").trim();
+  if(!typed) return showError("Введите код");
+
+  // В демо сравниваем введённый код с токеном, который вернул backend
+  if(resetFlow.token && typed !== resetFlow.token){
+    return showError("Неверный код. Попробуйте ещё раз.");
+  }
+
+  setResetStep("set");
+  $("resetNewPassword")?.focus();
+}
+
+async function onResetConfirm(){
+  try{
+    showError(null);
+
+    const p1 = $("resetNewPassword").value;
+    const p2 = $("resetNewPassword2")?.value ?? p1;
+
+    if(!p1) return showError("Введите новый пароль");
+    if(p2 !== p1) return showError("Пароли не совпадают");
+
+    const token = resetFlow.token || ($("resetToken")?.value || "").trim();
+    if(!token) return showError("Сначала запросите код");
+
+    await apiPasswordReset(token, p1);
+
+    // Готово — возвращаем к входу
+    setResetStep("request");
+    $("resetEmail").value = "";
+    resetFlow = { email: "", token: "", step: "request" };
+    location.hash = "#login";
+  }catch(err){
+    showError(err?.message || "Ошибка");
+  }
+}
+
+function wireUI(){
+  $("btnLogin").addEventListener("click", onLoginSubmit);
+  $("btnLogout").addEventListener("click", onLogout);
+
+  $("toRegister").addEventListener("click", (e)=>{ e.preventDefault(); location.hash = "#register"; });
+  $("toLoginFromRegister").addEventListener("click", (e)=>{ e.preventDefault(); location.hash = "#login"; });
+
+  $("forgotPassword").addEventListener("click", (e)=>{ e.preventDefault(); location.hash = "#reset"; });
+  $("backToLoginFromReset").addEventListener("click", (e)=>{ e.preventDefault(); location.hash = "#login"; });
+  const back2 = $("backToLoginFromReset2");
+  if(back2) back2.addEventListener("click", (e)=>{ e.preventDefault(); location.hash = "#login"; });
+
+  $("btnRegister").addEventListener("click", onRegisterSubmit);
+
+  // Reset flow (пошагово)
+  $("resetRequestBtn").addEventListener("click", onResetRequest);
+
+  const verifyBtn = $("resetVerifyBtn");
+  if(verifyBtn) verifyBtn.addEventListener("click", onResetVerify);
+
+  const resend = $("resetResendBtn");
+  if(resend) resend.addEventListener("click", (e)=>{ e.preventDefault(); onResetResend(); });
+
+  const changeEmail = $("resetChangeEmailBtn");
+  if(changeEmail) changeEmail.addEventListener("click", (e)=>{ e.preventDefault(); showError(null); setResetStep("request"); $("resetEmail")?.focus(); });
+
+  $("resetConfirmBtn").addEventListener("click", onResetConfirm);
+
+  // Enter key shortcuts
+  ["loginEmail","loginPassword"].forEach(id=>{
+    $(id).addEventListener("keydown",(e)=>{ if(e.key === "Enter") onLoginSubmit(); });
+  });
+
+  ["regLogin","regEmail","regPassword"].forEach(id=>{
+    $(id).addEventListener("keydown",(e)=>{ if(e.key === "Enter") onRegisterSubmit(); });
+  });
+
+  $("resetEmail").addEventListener("keydown",(e)=>{ if(e.key === "Enter") onResetRequest(); });
+  const rt = $("resetToken");
+  if(rt) rt.addEventListener("keydown",(e)=>{ if(e.key === "Enter") onResetVerify(); });
+  const rnp = $("resetNewPassword");
+  if(rnp) rnp.addEventListener("keydown",(e)=>{ if(e.key === "Enter") onResetConfirm(); });
+  const rnp2 = $("resetNewPassword2");
+  if(rnp2) rnp2.addEventListener("keydown",(e)=>{ if(e.key === "Enter") onResetConfirm(); });
+}
+
+(async function init(async function init(){
+  wireUI();
+  const ok = await verifyToken();
+  if(ok){
+    hideOverlay();
+    window.dispatchEvent(new Event("auth:ready"));
+  }else{
+    showOverlay();
+    switchTab("login");
+  }
 })();
