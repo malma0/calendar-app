@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 import secrets
+import random
 from datetime import date as dt_date, datetime, timedelta
 from typing import List, Optional
 
@@ -15,6 +16,7 @@ import models
 import schemas
 from auth import get_password_hash, verify_password, create_access_token, get_current_user
 from database import engine, get_db
+from email_service import send_reset_email
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -76,22 +78,23 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
 
 @app.post("/api/password/request")
 def request_password_reset(payload: schemas.PasswordResetRequest, db: Session = Depends(get_db)):
-    """MVP password reset.
-
-    В проде это должен быть email со ссылкой/кодом. Сейчас SMTP нет, поэтому
-    мы возвращаем токен в ответе, чтобы можно было протестировать функционал.
-    """
     user = db.query(models.User).filter(models.User.email == payload.email).first()
 
-    # Всегда отвечаем "успехом", чтобы не палить, есть ли такой email
+    # Всегда отвечаем одинаково, чтобы не палить, есть ли такой email
     if not user:
-        return {"detail": "Если email существует, код восстановления создан."}
+        return {"detail": "Если email существует, код восстановления отправлен."}
 
-    token = secrets.token_urlsafe(32)
+    token = f"{random.randint(100000, 999999)}"
     user.reset_token = token
     user.reset_token_expires_at = datetime.utcnow() + timedelta(minutes=30)
     db.commit()
-    return {"detail": "Код восстановления создан.", "token": token, "expires_in_minutes": 30}
+
+    try:
+        send_reset_email(user.email, token)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Не удалось отправить письмо: {exc}")
+
+    return {"detail": "Код восстановления отправлен на почту."}
 
 
 @app.post("/api/password/reset")

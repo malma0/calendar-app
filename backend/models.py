@@ -14,7 +14,7 @@ class User(Base):
     full_name = Column(String, nullable=True)
     color = Column(String, nullable=True, default="#007AFF")
     created_at = Column(DateTime, nullable=True)
-
+    
     # поля для сброса пароля
     reset_token = Column(String, nullable=True)
     reset_token_expires_at = Column(DateTime, nullable=True)

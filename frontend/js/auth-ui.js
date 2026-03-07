@@ -87,6 +87,24 @@ function setResetStep(step){
   $("resetStepRequest")?.classList.toggle("hidden", step !== "request");
   $("resetStepVerify")?.classList.toggle("hidden", step !== "verify");
   $("resetStepSet")?.classList.toggle("hidden", step !== "set");
+
+  const sub = $("resetSubtext");
+  const tokenBox = $("resetTokenBox");
+  if (sub) {
+    if (step === "request") {
+      sub.textContent = "Введите email, указанный при регистрации.";
+      sub.classList.remove("hidden");
+    } else if (step === "verify") {
+      sub.textContent = "Код отправлен. Введите его ниже.";
+      sub.classList.remove("hidden");
+    } else {
+      sub.classList.add("hidden");
+    }
+  }
+  if (tokenBox) {
+    tokenBox.textContent = "";
+    tokenBox.classList.add("hidden");
+  }
   styleResetLinks();
 }
 
@@ -154,13 +172,6 @@ async function onResetRequest(){
     resetFlow.email = email;
     const res = await requestPasswordReset(email);
     resetFlow.token = res?.token || "";
-    const box = $("resetTokenBox");
-    if(box){
-      box.textContent = resetFlow.token
-        ? `Код отправлен на почту. Демо-код: ${resetFlow.token}`
-        : "Код отправлен на почту. Введите его ниже.";
-      box.classList.remove("hidden");
-    }
     $("resetToken").value = "";
     setResetStep("verify");
     $("resetToken")?.focus();
@@ -176,13 +187,6 @@ async function onResetResend(){
   try{
     const res = await requestPasswordReset(email);
     resetFlow.token = res?.token || "";
-    const box = $("resetTokenBox");
-    if(box){
-      box.textContent = resetFlow.token
-        ? `Код отправлен ещё раз. Демо-код: ${resetFlow.token}`
-        : "Код отправлен ещё раз. Введите его ниже.";
-      box.classList.remove("hidden");
-    }
     setResetStep("verify");
   }catch(err){
     showError(err?.message || "Ошибка");
@@ -193,7 +197,6 @@ function onResetVerify(){
   clearError();
   const typed = $("resetToken")?.value.trim() || "";
   if(!typed) return showError("Введите код");
-  if(resetFlow.token && typed !== resetFlow.token) return showError("Неверный код. Попробуйте ещё раз.");
   setResetStep("set");
   $("resetNewPassword")?.focus();
 }
