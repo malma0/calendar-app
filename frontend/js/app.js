@@ -7,6 +7,8 @@
   function getAuthToken(){
     return localStorage.getItem("auth_token") || sessionStorage.getItem("auth_token") || "";
   }
+  const API_PORT = 8080;
+  const API_ORIGIN = `${window.location.protocol}//${window.location.hostname}:${API_PORT}`;
   function authHeaders(){
     const t = getAuthToken();
     return t ? { "Authorization": `Bearer ${t}` } : {};
@@ -72,7 +74,7 @@
     list.innerHTML = `<div class="color-hint">Загружаем группы…</div>`;
     let groups = [];
     try{
-	      const res = await fetch("/api/groups", { headers: { ...authHeaders() } });
+	      const res = await fetch(`${API_ORIGIN}/api/groups`, { headers: { ...authHeaders() } });
       if(res.ok) groups = await res.json();
     }catch{}
     if(!Array.isArray(groups) || !groups.length){

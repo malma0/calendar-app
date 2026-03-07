@@ -18,6 +18,7 @@ from database import engine, get_db
 
 models.Base.metadata.create_all(bind=engine)
 
+
 def _ensure_user_reset_columns() -> None:
     """Small SQLite migration helper (dev).
     If DB was created before reset fields were added, we add them with ALTER TABLE.
@@ -39,7 +40,7 @@ app = FastAPI(title="Календарь совместных планов API", 
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=".*",  # dev: разрешаем открывать с любого хоста (телефон/ПК)
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -72,6 +73,7 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db.refresh(db_user)
     return db_user
 
+
 @app.post("/api/password/request")
 def request_password_reset(payload: schemas.PasswordResetRequest, db: Session = Depends(get_db)):
     """MVP password reset.
@@ -91,6 +93,7 @@ def request_password_reset(payload: schemas.PasswordResetRequest, db: Session = 
     db.commit()
     return {"detail": "Код восстановления создан.", "token": token, "expires_in_minutes": 30}
 
+
 @app.post("/api/password/reset")
 def confirm_password_reset(payload: schemas.PasswordResetConfirm, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.reset_token == payload.token).first()
@@ -102,6 +105,7 @@ def confirm_password_reset(payload: schemas.PasswordResetConfirm, db: Session = 
     user.reset_token_expires_at = None
     db.commit()
     return {"detail": "Пароль обновлен"}
+
 
 @app.post("/api/token", response_model=schemas.Token)
 def login(
@@ -130,9 +134,11 @@ def login(
     )
     return schemas.Token(access_token=token)
 
+
 @app.get("/api/users/me", response_model=schemas.UserResponse)
 def read_users_me(current_user: models.User = Depends(get_current_user)):
     return current_user
+
 
 # ===== GROUPS =====
 @app.post("/api/groups", response_model=schemas.GroupResponse)
@@ -157,6 +163,7 @@ def create_group(
     db.refresh(db_group)
     return db_group
 
+
 @app.get("/api/groups", response_model=List[schemas.GroupResponse])
 def get_my_groups(
     current_user: models.User = Depends(get_current_user),
@@ -179,6 +186,7 @@ def get_group(
         raise HTTPException(status_code=404, detail="Группа не найдена или вы не состоите в ней")
     return group
 
+
 @app.get("/api/groups/{group_id}/members", response_model=List[schemas.GroupMember])
 def get_group_members(
     group_id: int,
@@ -193,6 +201,7 @@ def get_group_members(
     if not group:
         raise HTTPException(status_code=404, detail="Группа не найдена или вы не состоите в ней")
     return group.members
+
 
 @app.put("/api/groups/{group_id}", response_model=schemas.GroupResponse)
 def update_group(
@@ -217,6 +226,7 @@ def update_group(
     db.commit()
     db.refresh(group)
     return group
+
 
 @app.put("/api/users/me/color", response_model=schemas.UserResponse)
 def update_my_color(
@@ -264,6 +274,7 @@ def create_event(
     db.refresh(db_event)
     return db_event
 
+
 @app.get("/api/events", response_model=List[schemas.EventResponse])
 def get_events(
     group_id: Optional[int] = Query(default=None),
@@ -288,10 +299,12 @@ def get_events(
 
     return q.order_by(models.Event.date.asc(), models.Event.start_time.asc().nulls_last()).all()
 
+
 # ===== HEALTH =====
 @app.get("/")
 def read_root():
     return {"message": "Календарь совместных планов API работает!"}
+
 
 @app.get("/api/health")
 def health_check():

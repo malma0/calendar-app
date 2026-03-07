@@ -155,6 +155,8 @@
           <input class="text-input" id="editUsername" type="text" placeholder="Например: matthewmal" />
 
           <div class="hint" style="margin-top:14px;">Пока сохраняем локально (бэк добавим позже).</div>
+
+          <button class="danger-btn" id="logoutBtn" type="button">Выйти из профиля</button>
         </div>
       </div>
     </div>
@@ -475,10 +477,13 @@
 			  <label>Пароль
 				<input id="loginPassword" type="password" autocomplete="current-password" />
 			  </label>
-			  <label class="auth-checkbox">
-				<input id="rememberMe" type="checkbox" checked />
-				<span>Запомнить меня</span>
-			  </label>
+			  <div class="auth-remember-row">
+                <span class="auth-remember-text">Запомнить меня</span>
+                <label class="switch auth-switch" aria-label="Запомнить меня">
+                  <input id="rememberMe" type="checkbox" checked />
+                  <span class="slider"></span>
+                </label>
+              </div>
 			  <button id="loginBtn" type="button" class="auth-primary">Войти</button>
 			  <div class="auth-links-row">
 				<a href="#" id="openResetLink" class="auth-link">Забыли пароль?</a>

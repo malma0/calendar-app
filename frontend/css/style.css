@@ -28,6 +28,8 @@
 html,body{ height:100%; background:var(--bg); color:var(--text); }
 body{ -webkit-tap-highlight-color: transparent; }
 
+.hidden{ display:none !important; }
+
 .pages{
   flex:1;
   min-height:0;
@@ -1487,34 +1489,6 @@ body.fullscreen-open .tabbar{ display:none; }
 .auth-checkbox input{ width: auto; margin: 0; }
 /* Меняем синий цвет чекбокса (iOS/Safari/Chrome) на фирменный золотой */
 .auth-checkbox input[type="checkbox"]{ accent-color: #997a16; }
-/* iOS-like toggle for "Запомнить меня" */
-.auth-remember-row{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  margin-top:12px;
-}
-.auth-remember-text{ opacity:0.92; font-size:14px; }
-
-/* reuse .switch markup, but tune size for auth */
-.switch.auth-switch{
-  width: 48px;
-  height: 28px;
-}
-.switch.auth-switch .slider{
-  border-radius: 999px;
-}
-.switch.auth-switch .slider:before{
-  height: 22px;
-  width: 22px;
-  left: 3px;
-  bottom: 3px;
-  border-radius: 999px;
-}
-.switch.auth-switch input:checked + .slider{
-  background: #997a16;
-}
 
 .auth-primary,
 .auth-secondary{
