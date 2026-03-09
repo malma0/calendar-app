@@ -286,7 +286,7 @@
             <input id="inviteLink" class="invite-input" readonly value="" placeholder="Сгенерируем ссылку…" />
             <button class="icon-mini-btn" id="copyInviteBtn" type="button" aria-label="Скопировать ссылку"><i data-lucide="copy"></i></button>
           </div>
-          <div class="color-hint" id="inviteHint">Пока демо: ссылка не активирует вступление. Сделаем после того, как «комната» заработает.</div>
+          <div class="color-hint" id="inviteHint">Отправьте ссылку человеку. После входа он сможет присоединиться к группе.</div>
         </div>
       </div>
 </div>
@@ -564,16 +564,16 @@
 		</div>
 	  </div>
 
-	<script src="js/app.js?v=5011"></script>
-	<script type="module" src="./js/auth-ui.js?v=5011"></script>
+	<script src="js/app.js?v=5013"></script>
+	<script type="module" src="./js/auth-ui.js?v=5013"></script>
 
 	  <script type="module">
-	    import { initFriends } from "./js/friends.js?v=5011";
+	    import { initFriends } from "./js/friends.js?v=5013";
 	    window.addEventListener("auth:ready", () => initFriends(), { once: true });
 	</script>
 
 	  <script type="module">
-	    import { initProfile } from "./js/profile.js?v=5011";
+	    import { initProfile } from "./js/profile.js?v=5013";
 	    window.addEventListener("auth:ready", () => initProfile(), { once: true });
 	  </script>
 

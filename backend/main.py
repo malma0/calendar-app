@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import uuid
-import secrets
 import random
+import secrets
+import uuid
 from datetime import date as dt_date, datetime, timedelta
 from typing import List, Optional
 
@@ -22,19 +22,38 @@ models.Base.metadata.create_all(bind=engine)
 
 
 def _ensure_user_reset_columns() -> None:
-    """Small SQLite migration helper (dev).
-    If DB was created before reset fields were added, we add them with ALTER TABLE.
-    """
     try:
         with engine.begin() as conn:
             cols = conn.execute(text("PRAGMA table_info(users)")).fetchall()
-            col_names = {row[1] for row in cols}
-            if "reset_token" not in col_names:
+            names = {row[1] for row in cols}
+            if "reset_token" not in names:
                 conn.execute(text("ALTER TABLE users ADD COLUMN reset_token VARCHAR"))
-            if "reset_token_expires_at" not in col_names:
+            if "reset_token_expires_at" not in names:
                 conn.execute(text("ALTER TABLE users ADD COLUMN reset_token_expires_at DATETIME"))
     except Exception:
-        # Don't block startup in dev.
+        pass
+
+
+def _ensure_groups_columns() -> None:
+    try:
+        with engine.begin() as conn:
+            cols = conn.execute(text("PRAGMA table_info(groups)")).fetchall()
+            names = {row[1] for row in cols}
+            if "description" not in names:
+                conn.execute(text("ALTER TABLE groups ADD COLUMN description TEXT"))
+            if "invite_code" not in names:
+                conn.execute(text("ALTER TABLE groups ADD COLUMN invite_code VARCHAR"))
+            if "created_at" not in names:
+                conn.execute(text("ALTER TABLE groups ADD COLUMN created_at DATETIME"))
+            rows = conn.execute(text("SELECT id, invite_code FROM groups")).fetchall()
+            for gid, code in rows:
+                if not code:
+                    conn.execute(text("UPDATE groups SET invite_code=:code, created_at=COALESCE(created_at, :created) WHERE id=:id"), {
+                        "code": secrets.token_hex(4).upper(),
+                        "created": datetime.utcnow(),
+                        "id": gid,
+                    })
+    except Exception:
         pass
 
 
@@ -53,12 +72,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.on_event("startup")
 def _startup_migrations():
     _ensure_user_reset_columns()
+    _ensure_groups_columns()
 
 
-# ===== AUTH =====
 @app.post("/api/register", response_model=schemas.UserResponse)
 def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     exists = (
@@ -84,8 +104,6 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
 @app.post("/api/password/request")
 def request_password_reset(payload: schemas.PasswordResetRequest, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == payload.email).first()
-
-    # Всегда отвечаем одинаково, чтобы не палить, есть ли такой email
     if not user:
         return {"detail": "Если email существует, код восстановления отправлен."}
 
@@ -99,7 +117,7 @@ def request_password_reset(payload: schemas.PasswordResetRequest, db: Session = 
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Не удалось отправить письмо: {exc}")
 
-    return {"detail": "Код восстановления отправлен на почту."}
+    return {"detail": "Код восстановления отправлен на почту.", "token": token}
 
 
 @app.post("/api/password/reset")
@@ -116,14 +134,8 @@ def confirm_password_reset(payload: schemas.PasswordResetConfirm, db: Session = 
 
 
 @app.post("/api/token", response_model=schemas.Token)
-def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db),
-):
-    # OAuth2PasswordRequestForm использует поле "username" (мы кладем туда username)
-    # login by username or email
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     identifier = (form_data.username or "").strip()
-    # Разрешаем вход и по email тоже
     if "@" in identifier:
         user = db.query(models.User).filter(models.User.email == identifier).first()
     else:
@@ -136,10 +148,7 @@ def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    token = create_access_token(
-        data={"sub": user.username},
-        expires_delta=timedelta(minutes=30),
-    )
+    token = create_access_token(data={"sub": user.username}, expires_delta=timedelta(minutes=30))
     return schemas.Token(access_token=token)
 
 
@@ -148,46 +157,42 @@ def read_users_me(current_user: models.User = Depends(get_current_user)):
     return current_user
 
 
-# ===== GROUPS =====
 @app.post("/api/groups", response_model=schemas.GroupResponse)
-def create_group(
-    group: schemas.GroupCreate,
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
+def create_group(group: schemas.GroupCreate, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     db_group = models.Group(
         name=group.name,
         description=group.description,
-        invite_code=str(uuid.uuid4())[:8].upper(),
+        invite_code=secrets.token_hex(4).upper(),
         owner_id=current_user.id,
+        created_at=datetime.utcnow(),
     )
     db.add(db_group)
     db.commit()
     db.refresh(db_group)
 
-    # добавляем создателя в участники
-    db_group.members.append(current_user)
-    db.commit()
-    db.refresh(db_group)
+    if not db.query(models.GroupMember).filter_by(user_id=current_user.id, group_id=db_group.id).first():
+        db.add(models.GroupMember(user_id=current_user.id, group_id=db_group.id))
+        db.commit()
     return db_group
 
 
 @app.get("/api/groups", response_model=List[schemas.GroupResponse])
-def get_my_groups(
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    return db.query(models.Group).filter(models.Group.members.any(user_id=current_user.id)).all()
+def get_my_groups(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    return (
+        db.query(models.Group)
+        .join(models.GroupMember, models.GroupMember.group_id == models.Group.id)
+        .filter(models.GroupMember.user_id == current_user.id)
+        .order_by(models.Group.created_at.desc().nullslast(), models.Group.id.desc())
+        .all()
+    )
+
 
 @app.get("/api/groups/{group_id}", response_model=schemas.GroupResponse)
-def get_group(
-    group_id: int,
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
+def get_group(group_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     group = (
         db.query(models.Group)
-        .filter(models.Group.id == group_id, models.Group.members.any(id=current_user.id))
+        .join(models.GroupMember, models.GroupMember.group_id == models.Group.id)
+        .filter(models.Group.id == group_id, models.GroupMember.user_id == current_user.id)
         .first()
     )
     if not group:
@@ -196,77 +201,73 @@ def get_group(
 
 
 @app.get("/api/groups/{group_id}/members", response_model=List[schemas.GroupMember])
-def get_group_members(
-    group_id: int,
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    group = (
-        db.query(models.Group)
-        .filter(models.Group.id == group_id, models.Group.members.any(id=current_user.id))
-        .first()
-    )
-    if not group:
+def get_group_members(group_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    allowed = db.query(models.GroupMember).filter_by(group_id=group_id, user_id=current_user.id).first()
+    if not allowed:
         raise HTTPException(status_code=404, detail="Группа не найдена или вы не состоите в ней")
-    return group.members
+    return (
+        db.query(models.User)
+        .join(models.GroupMember, models.GroupMember.user_id == models.User.id)
+        .filter(models.GroupMember.group_id == group_id)
+        .order_by(models.User.username.asc())
+        .all()
+    )
 
 
 @app.put("/api/groups/{group_id}", response_model=schemas.GroupResponse)
-def update_group(
-    group_id: int,
-    payload: schemas.GroupUpdate,
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    group = (
-        db.query(models.Group)
-        .filter(models.Group.id == group_id, models.Group.members.any(id=current_user.id))
-        .first()
-    )
+def update_group(group_id: int, payload: schemas.GroupUpdate, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    group = db.query(models.Group).filter(models.Group.id == group_id).first()
     if not group:
-        raise HTTPException(status_code=404, detail="Группа не найдена или вы не состоите в ней")
-
-    # только владелец/админ
+        raise HTTPException(status_code=404, detail="Группа не найдена")
     if group.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="Только админ группы может менять название")
-
     group.name = payload.name
     db.commit()
     db.refresh(group)
     return group
 
 
+@app.get("/api/groups/{group_id}/invite")
+def get_group_invite(group_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    group = (
+        db.query(models.Group)
+        .join(models.GroupMember, models.GroupMember.group_id == models.Group.id)
+        .filter(models.Group.id == group_id, models.GroupMember.user_id == current_user.id)
+        .first()
+    )
+    if not group:
+        raise HTTPException(status_code=404, detail="Группа не найдена или вы не состоите в ней")
+    return {"invite_code": group.invite_code, "group_id": group.id, "group_name": group.name}
+
+
+@app.post("/api/invite/{invite_code}/join", response_model=schemas.GroupResponse)
+def join_by_invite(invite_code: str, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    group = db.query(models.Group).filter(models.Group.invite_code == invite_code.upper()).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Приглашение не найдено")
+    exists = db.query(models.GroupMember).filter_by(group_id=group.id, user_id=current_user.id).first()
+    if not exists:
+        db.add(models.GroupMember(group_id=group.id, user_id=current_user.id))
+        db.commit()
+    db.refresh(group)
+    return group
+
+
 @app.put("/api/users/me/color", response_model=schemas.UserResponse)
-def update_my_color(
-    payload: schemas.UserColorUpdate,
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
+def update_my_color(payload: schemas.UserColorUpdate, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     current_user.color = payload.color
     db.commit()
     db.refresh(current_user)
     return current_user
 
-# ===== EVENTS =====
-@app.post("/api/events", response_model=schemas.EventResponse)
-def create_event(
-    event: schemas.EventCreate,
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    # группа существует и пользователь участник
-    group = (
-        db.query(models.Group)
-        .filter(models.Group.id == event.group_id, models.Group.members.any(id=current_user.id))
-        .first()
-    )
-    if not group:
-        raise HTTPException(status_code=404, detail="Группа не найдена или вы не состоите в ней")
 
-    # валидация времени
+@app.post("/api/events", response_model=schemas.EventResponse)
+def create_event(event: schemas.EventCreate, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    allowed = db.query(models.GroupMember).filter_by(group_id=event.group_id, user_id=current_user.id).first()
+    if not allowed:
+        raise HTTPException(status_code=404, detail="Группа не найдена или вы не состоите в ней")
     if event.start_time and event.end_time and event.start_time >= event.end_time:
         raise HTTPException(status_code=400, detail="end_time должно быть позже start_time")
-
     db_event = models.Event(
         title=event.title,
         description=event.description,
@@ -276,7 +277,6 @@ def create_event(
         user_id=current_user.id,
         group_id=event.group_id,
     )
-
     db.add(db_event)
     db.commit()
     db.refresh(db_event)
@@ -284,31 +284,17 @@ def create_event(
 
 
 @app.get("/api/events", response_model=List[schemas.EventResponse])
-def get_events(
-    group_id: Optional[int] = Query(default=None),
-    year: Optional[int] = Query(default=None, ge=1900, le=3000),
-    month: Optional[int] = Query(default=None, ge=1, le=12),
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    # только группы, где пользователь состоит
-    q = db.query(models.Event).join(models.Group).filter(models.Group.members.any(id=current_user.id))
-
+def get_events(group_id: Optional[int] = Query(default=None), year: Optional[int] = Query(default=None, ge=1900, le=3000), month: Optional[int] = Query(default=None, ge=1, le=12), current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    q = db.query(models.Event).join(models.GroupMember, models.GroupMember.group_id == models.Event.group_id).filter(models.GroupMember.user_id == current_user.id)
     if group_id is not None:
         q = q.filter(models.Event.group_id == group_id)
-
     if year is not None and month is not None:
         start = dt_date(year, month, 1)
-        if month == 12:
-            end = dt_date(year + 1, 1, 1)
-        else:
-            end = dt_date(year, month + 1, 1)
+        end = dt_date(year + 1, 1, 1) if month == 12 else dt_date(year, month + 1, 1)
         q = q.filter(models.Event.date >= start, models.Event.date < end)
-
     return q.order_by(models.Event.date.asc(), models.Event.start_time.asc().nulls_last()).all()
 
 
-# ===== HEALTH =====
 @app.get("/")
 def read_root():
     return {"message": "Календарь совместных планов API работает!"}

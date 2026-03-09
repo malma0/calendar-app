@@ -45,15 +45,12 @@ export async function apiFetch(path, { method="GET", body, headers={} } = {}){
     throw new Error(msg);
   }
 
-  // если пустое тело
   const text = await res.text();
   return text ? JSON.parse(text) : null;
 }
 
-// ===== AUTH =====
 export async function login(identifier, password, persist = true){
   const form = new URLSearchParams();
-  // backend принимает username ИЛИ email в поле "username"
   form.set("username", identifier);
   form.set("password", password);
 
@@ -106,7 +103,14 @@ export function getMe(){
   return apiFetch("/users/me");
 }
 
-
 export function createGroup(name, description=null){
   return apiFetch('/groups', { method:'POST', body:{ name, description } });
+}
+
+export function getGroupInvite(groupId){
+  return apiFetch(`/groups/${groupId}/invite`);
+}
+
+export function joinByInvite(inviteCode){
+  return apiFetch(`/invite/${encodeURIComponent(inviteCode)}/join`, { method: 'POST' });
 }
