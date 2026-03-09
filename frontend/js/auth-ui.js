@@ -6,7 +6,7 @@ import {
   requestPasswordReset,
   confirmPasswordReset,
   apiFetch,
-} from "./api.js?v=5007";
+} from "./api.js?v=5011";
 
 function $(id){ return document.getElementById(id); }
 

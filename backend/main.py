@@ -42,7 +42,12 @@ app = FastAPI(title="Календарь совместных планов API", 
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$",
+    allow_origins=[
+        "http://localhost:5500",
+        "http://127.0.0.1:5500",
+        "http://192.168.0.234:5500",
+        "http://192.168.0.214:5500",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -172,7 +177,7 @@ def get_my_groups(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return db.query(models.Group).filter(models.Group.members.any(id=current_user.id)).all()
+    return db.query(models.Group).filter(models.Group.members.any(user_id=current_user.id)).all()
 
 @app.get("/api/groups/{group_id}", response_model=schemas.GroupResponse)
 def get_group(
