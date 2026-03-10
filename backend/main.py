@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import random
 import secrets
-import uuid
 from datetime import date as dt_date, datetime, timedelta
 from typing import List, Optional
 
@@ -57,7 +56,26 @@ def _ensure_groups_columns() -> None:
         pass
 
 
-app = FastAPI(title="Календарь совместных планов API", version="0.1.0")
+def _ensure_group_members_columns() -> None:
+    try:
+        with engine.begin() as conn:
+            cols = conn.execute(text("PRAGMA table_info(group_members)")).fetchall()
+            names = {row[1] for row in cols}
+            if "color" not in names:
+                conn.execute(text("ALTER TABLE group_members ADD COLUMN color VARCHAR"))
+            rows = conn.execute(text("SELECT gm.user_id, gm.group_id, gm.color, u.color FROM group_members gm LEFT JOIN users u ON u.id = gm.user_id")).fetchall()
+            for user_id, group_id, color, user_color in rows:
+                if not color:
+                    conn.execute(text("UPDATE group_members SET color=:color WHERE user_id=:user_id AND group_id=:group_id"), {
+                        "color": user_color or "#007AFF",
+                        "user_id": user_id,
+                        "group_id": group_id,
+                    })
+    except Exception:
+        pass
+
+
+app = FastAPI(title="Календарь совместных планов API", version="0.2.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -77,6 +95,7 @@ app.add_middleware(
 def _startup_migrations():
     _ensure_user_reset_columns()
     _ensure_groups_columns()
+    _ensure_group_members_columns()
 
 
 @app.post("/api/register", response_model=schemas.UserResponse)
@@ -87,7 +106,7 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
         .first()
     )
     if exists:
-        raise HTTPException(status_code=400, detail="Email или имя пользователя уже заняты")
+        raise HTTPException(status_code=400, detail="Email или login уже заняты")
 
     db_user = models.User(
         email=user.email,
@@ -148,12 +167,28 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    token = create_access_token(data={"sub": user.username}, expires_delta=timedelta(minutes=30))
+    token = create_access_token(data={"sub": str(user.id)}, expires_delta=timedelta(minutes=30))
     return schemas.Token(access_token=token)
 
 
 @app.get("/api/users/me", response_model=schemas.UserResponse)
 def read_users_me(current_user: models.User = Depends(get_current_user)):
+    return current_user
+
+
+@app.put("/api/users/me", response_model=schemas.UserResponse)
+def update_me(payload: schemas.UserUpdate, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    exists = (
+        db.query(models.User)
+        .filter(models.User.username == payload.username, models.User.id != current_user.id)
+        .first()
+    )
+    if exists:
+        raise HTTPException(status_code=400, detail="Login уже занят")
+    current_user.username = payload.username
+    current_user.full_name = payload.full_name
+    db.commit()
+    db.refresh(current_user)
     return current_user
 
 
@@ -171,32 +206,40 @@ def create_group(group: schemas.GroupCreate, current_user: models.User = Depends
     db.refresh(db_group)
 
     if not db.query(models.GroupMember).filter_by(user_id=current_user.id, group_id=db_group.id).first():
-        db.add(models.GroupMember(user_id=current_user.id, group_id=db_group.id))
+        db.add(models.GroupMember(user_id=current_user.id, group_id=db_group.id, color=current_user.color))
         db.commit()
+    setattr(db_group, "member_color", current_user.color)
     return db_group
 
 
 @app.get("/api/groups", response_model=List[schemas.GroupResponse])
 def get_my_groups(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    return (
-        db.query(models.Group)
+    groups = (
+        db.query(models.Group, models.GroupMember.color.label("member_color"))
         .join(models.GroupMember, models.GroupMember.group_id == models.Group.id)
         .filter(models.GroupMember.user_id == current_user.id)
         .order_by(models.Group.created_at.desc().nullslast(), models.Group.id.desc())
         .all()
     )
+    result = []
+    for group, member_color in groups:
+        setattr(group, "member_color", member_color or current_user.color or "#007AFF")
+        result.append(group)
+    return result
 
 
 @app.get("/api/groups/{group_id}", response_model=schemas.GroupResponse)
 def get_group(group_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    group = (
-        db.query(models.Group)
+    row = (
+        db.query(models.Group, models.GroupMember.color.label("member_color"))
         .join(models.GroupMember, models.GroupMember.group_id == models.Group.id)
         .filter(models.Group.id == group_id, models.GroupMember.user_id == current_user.id)
         .first()
     )
-    if not group:
+    if not row:
         raise HTTPException(status_code=404, detail="Группа не найдена или вы не состоите в ней")
+    group, member_color = row
+    setattr(group, "member_color", member_color or current_user.color or "#007AFF")
     return group
 
 
@@ -205,13 +248,22 @@ def get_group_members(group_id: int, current_user: models.User = Depends(get_cur
     allowed = db.query(models.GroupMember).filter_by(group_id=group_id, user_id=current_user.id).first()
     if not allowed:
         raise HTTPException(status_code=404, detail="Группа не найдена или вы не состоите в ней")
-    return (
-        db.query(models.User)
+    rows = (
+        db.query(models.User, models.GroupMember.color)
         .join(models.GroupMember, models.GroupMember.user_id == models.User.id)
         .filter(models.GroupMember.group_id == group_id)
-        .order_by(models.User.username.asc())
+        .order_by(models.User.full_name.asc().nulls_last(), models.User.username.asc())
         .all()
     )
+    return [
+        {
+            "id": user.id,
+            "login": user.username,
+            "name": user.full_name or user.username,
+            "color": color or user.color or "#007AFF",
+        }
+        for user, color in rows
+    ]
 
 
 @app.put("/api/groups/{group_id}", response_model=schemas.GroupResponse)
@@ -224,7 +276,50 @@ def update_group(group_id: int, payload: schemas.GroupUpdate, current_user: mode
     group.name = payload.name
     db.commit()
     db.refresh(group)
+    membership = db.query(models.GroupMember).filter_by(group_id=group.id, user_id=current_user.id).first()
+    setattr(group, "member_color", membership.color if membership and membership.color else current_user.color)
     return group
+
+
+@app.put("/api/groups/{group_id}/my-color", response_model=schemas.GroupResponse)
+def update_group_color(group_id: int, payload: schemas.UserColorUpdate, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    group = db.query(models.Group).filter(models.Group.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Группа не найдена")
+    membership = db.query(models.GroupMember).filter_by(group_id=group.id, user_id=current_user.id).first()
+    if not membership:
+        raise HTTPException(status_code=404, detail="Вы не состоите в группе")
+    membership.color = payload.color
+    db.commit()
+    db.refresh(group)
+    setattr(group, "member_color", payload.color)
+    return group
+
+
+@app.post("/api/groups/{group_id}/leave")
+def leave_group(group_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    group = db.query(models.Group).filter_by(id=group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Группа не найдена")
+    if group.owner_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Создатель не может выйти из группы. Удалите группу или передайте владение.")
+    membership = db.query(models.GroupMember).filter_by(group_id=group_id, user_id=current_user.id).first()
+    if membership:
+        db.delete(membership)
+        db.commit()
+    return {"detail": "Вы вышли из группы"}
+
+
+@app.delete("/api/groups/{group_id}")
+def delete_group(group_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    group = db.query(models.Group).filter_by(id=group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Группа не найдена")
+    if group.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Удалить группу может только создатель")
+    db.delete(group)
+    db.commit()
+    return {"detail": "Группа удалена"}
 
 
 @app.get("/api/groups/{group_id}/invite")
@@ -247,9 +342,10 @@ def join_by_invite(invite_code: str, current_user: models.User = Depends(get_cur
         raise HTTPException(status_code=404, detail="Приглашение не найдено")
     exists = db.query(models.GroupMember).filter_by(group_id=group.id, user_id=current_user.id).first()
     if not exists:
-        db.add(models.GroupMember(group_id=group.id, user_id=current_user.id))
+        db.add(models.GroupMember(group_id=group.id, user_id=current_user.id, color=current_user.color))
         db.commit()
     db.refresh(group)
+    setattr(group, "member_color", current_user.color)
     return group
 
 
@@ -280,19 +376,83 @@ def create_event(event: schemas.EventCreate, current_user: models.User = Depends
     db.add(db_event)
     db.commit()
     db.refresh(db_event)
-    return db_event
+    return {
+        **db_event.__dict__,
+        "creator_login": current_user.username,
+        "creator_name": current_user.full_name or current_user.username,
+        "color": allowed.color or current_user.color or "#007AFF",
+    }
+
+
+@app.put("/api/events/{event_id}", response_model=schemas.EventResponse)
+def update_event(event_id: int, payload: schemas.EventUpdate, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    ev = db.query(models.Event).filter_by(id=event_id).first()
+    if not ev:
+        raise HTTPException(status_code=404, detail="Событие не найдено")
+    if ev.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Редактировать можно только свои события")
+    if payload.start_time and payload.end_time and payload.start_time >= payload.end_time:
+        raise HTTPException(status_code=400, detail="Конец должен быть позже начала")
+    ev.title = payload.title
+    ev.date = payload.date
+    ev.start_time = payload.start_time
+    ev.end_time = payload.end_time
+    db.commit()
+    db.refresh(ev)
+    membership = db.query(models.GroupMember).filter_by(group_id=ev.group_id, user_id=current_user.id).first()
+    return {
+        **ev.__dict__,
+        "creator_login": current_user.username,
+        "creator_name": current_user.full_name or current_user.username,
+        "color": membership.color if membership and membership.color else current_user.color or "#007AFF",
+    }
+
+
+@app.delete("/api/events/{event_id}")
+def delete_event(event_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    ev = db.query(models.Event).filter_by(id=event_id).first()
+    if not ev:
+        raise HTTPException(status_code=404, detail="Событие не найдено")
+    if ev.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Удалить можно только своё событие")
+    db.delete(ev)
+    db.commit()
+    return {"detail": "Событие удалено"}
 
 
 @app.get("/api/events", response_model=List[schemas.EventResponse])
 def get_events(group_id: Optional[int] = Query(default=None), year: Optional[int] = Query(default=None, ge=1900, le=3000), month: Optional[int] = Query(default=None, ge=1, le=12), current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    q = db.query(models.Event).join(models.GroupMember, models.GroupMember.group_id == models.Event.group_id).filter(models.GroupMember.user_id == current_user.id)
+    q = (
+        db.query(models.Event, models.User, models.GroupMember.color.label("member_color"))
+        .join(models.GroupMember, models.GroupMember.group_id == models.Event.group_id)
+        .join(models.User, models.User.id == models.Event.user_id)
+        .filter(models.GroupMember.user_id == current_user.id)
+        .filter(models.GroupMember.group_id == models.Event.group_id)
+    )
     if group_id is not None:
         q = q.filter(models.Event.group_id == group_id)
     if year is not None and month is not None:
         start = dt_date(year, month, 1)
         end = dt_date(year + 1, 1, 1) if month == 12 else dt_date(year, month + 1, 1)
         q = q.filter(models.Event.date >= start, models.Event.date < end)
-    return q.order_by(models.Event.date.asc(), models.Event.start_time.asc().nulls_last()).all()
+    rows = q.order_by(models.Event.date.asc(), models.Event.start_time.asc().nulls_last()).all()
+    out = []
+    for ev, user, member_color in rows:
+        out.append({
+            "id": ev.id,
+            "title": ev.title,
+            "description": ev.description,
+            "date": ev.date,
+            "start_time": ev.start_time,
+            "end_time": ev.end_time,
+            "user_id": ev.user_id,
+            "group_id": ev.group_id,
+            "created_at": ev.created_at,
+            "creator_login": user.username,
+            "creator_name": user.full_name or user.username,
+            "color": member_color or user.color or "#007AFF",
+        })
+    return out
 
 
 @app.get("/")

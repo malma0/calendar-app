@@ -20,28 +20,21 @@
     timeFormat: localStorage.getItem("timeFormat") || "24", // "24" | "12"
   };
 
-  // Временно демо-участники. Потом подцепим из бэка группы.
-  const MEMBERS = [
-    { id: "me", name: "Вы", color: "#4d7cff" },
-    { id: "f1", name: "Друг 1", color: "#ff5a52" },
-    { id: "f2", name: "Друг 2", color: "#37d67a" },
-  ];
-
-  // Пока: текущий пользователь = Вы
-  const CURRENT_USER_ID = "me";
-
   const LONG_PRESS_MS = 520;
 
   const state = {
     currentMonth: startOfMonth(new Date()),
     selectedDate: startOfDay(new Date()),
     weekStartDate: null,
-    viewMode: "month", // "month" | "week"
+    viewMode: "month",
     pressTimer: null,
     touchStartX: null,
     touchStartY: null,
     activeTab: "calendar",
     editingEventId: null,
+    me: null,
+    eventsCache: [],
+    membersCache: [],
   };
 
   const $ = (id) => document.getElementById(id);
@@ -181,18 +174,51 @@ function pad2(n){ return String(n).padStart(2,"0"); }
     return `${formatTime(a)} – ${formatTime(b)}`;
   }
 
-  function loadEvents(){
+  async function fetchMe(){
     try{
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if(!raw) return [];
-      const data = JSON.parse(raw);
-      return Array.isArray(data) ? data : [];
-    }catch{
-      return [];
-    }
+      const res = await fetch(`${API_ORIGIN}/api/users/me`, { headers: { ...authHeaders() } });
+      if(res.ok) state.me = await res.json();
+    }catch{}
   }
-  function saveEvents(list){ localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }
-  function addEvent(ev){ const all = loadEvents(); all.push(ev); saveEvents(all); }
+
+  function currentGroupId(){
+    return Number(localStorage.getItem("active_group_id") || 0) || null;
+  }
+
+  async function fetchMembers(){
+    const gid = currentGroupId();
+    if(!gid){
+      state.membersCache = [];
+      return;
+    }
+    try{
+      const res = await fetch(`${API_ORIGIN}/api/groups/${gid}/members`, { headers: { ...authHeaders() } });
+      if(res.ok) state.membersCache = await res.json();
+      else state.membersCache = [];
+    }catch{ state.membersCache = []; }
+  }
+
+  async function fetchEventsForCurrentView(){
+    const gid = currentGroupId();
+    const y = state.currentMonth.getFullYear();
+    const m = state.currentMonth.getMonth() + 1;
+    if(!gid){
+      state.eventsCache = [];
+      return;
+    }
+    try{
+      const url = `${API_ORIGIN}/api/events?group_id=${gid}&year=${y}&month=${m}`;
+      const res = await fetch(url, { headers: { ...authHeaders() } });
+      if(res.ok) state.eventsCache = await res.json();
+      else state.eventsCache = [];
+    }catch{ state.eventsCache = []; }
+  }
+
+  function loadEvents(){
+    return Array.isArray(state.eventsCache) ? state.eventsCache : [];
+  }
+  function saveEvents(list){ state.eventsCache = Array.isArray(list) ? list : []; }
+  function addEvent(ev){ state.eventsCache = [...loadEvents(), ev]; }
 
   function updateEventById(id, patch){
     const all = loadEvents();
@@ -203,12 +229,9 @@ function pad2(n){ return String(n).padStart(2,"0"); }
     return true;
   }
 
-  function deleteEventById(id){
-    const all = loadEvents();
-    const next = all.filter(e => e.id !== id);
-    if(next.length === all.length) return false;
+  function deleteEventByIdLocal(id){
+    const next = loadEvents().filter(e => e.id !== id);
     saveEvents(next);
-    return true;
   }
 
   function eventsForIso(iso){
@@ -220,6 +243,14 @@ function pad2(n){ return String(n).padStart(2,"0"); }
   function busyUsersForIso(iso){
     const set = new Set(eventsForIso(iso).map(e => e.user_id));
     return [...set];
+  }
+
+  function memberForUserId(uid){
+    const fromMembers = state.membersCache.find(m => String(m.id) === String(uid));
+    if(fromMembers) return fromMembers;
+    const ev = loadEvents().find(e => String(e.user_id) === String(uid));
+    if(ev) return { id: uid, name: ev.creator_name || ev.creator_login || "Участник", login: ev.creator_login || "", color: ev.color || "#007AFF" };
+    return { id: uid, name: "Участник", login: "", color: "#007AFF" };
   }
 
   function isSameDay(a,b){
@@ -578,19 +609,19 @@ function createDayCell(date, otherMonth){
     const busyUsers = busyUsersForIso(iso);
 
     if(busyUsers.length === 1){
-      const member = MEMBERS.find(m => m.id === busyUsers[0]) || MEMBERS[0];
+      const member = memberForUserId(busyUsers[0]);
       const dot = document.createElement("div");
       dot.className = "busy-dot";
-      dot.style.background = member.color;
+      dot.style.background = member.color || "#007AFF";
       indicator.appendChild(dot);
     } else if(busyUsers.length >= 2){
       const pill = document.createElement("div");
       pill.className = "busy-pill";
       busyUsers.slice(0,4).forEach(uid => {
-        const member = MEMBERS.find(m => m.id === uid) || MEMBERS[0];
+        const member = memberForUserId(uid);
         const seg = document.createElement("div");
         seg.className = "busy-seg";
-        seg.style.background = member.color;
+        seg.style.background = member.color || "#007AFF";
         pill.appendChild(seg);
       });
       indicator.appendChild(pill);
@@ -680,12 +711,9 @@ function createDayCell(date, otherMonth){
   function openBusySheet(date){
     const iso = isoDate(date);
     const list = eventsForIso(iso);
-
     $("sheetBackdrop").hidden = false;
     $("busySheet").classList.add("open");
-
     $("busyTitle").textContent = `${date.getDate()} ${monthNameRu(date)}`;
-
     const container = $("busyList");
     container.innerHTML = "";
 
@@ -708,19 +736,18 @@ function createDayCell(date, otherMonth){
       byUser.get(ev.user_id).push(ev);
     }
 
-    for(const m of MEMBERS){
-      const items = byUser.get(m.id);
-      if(!items || items.length === 0) continue;
+    for(const [uid, items] of byUser.entries()){
+      const m = memberForUserId(uid);
+      const isMe = state.me && String(uid) === String(state.me.id);
 
-      // Only own events can be edited/deleted
-      if(m.id === CURRENT_USER_ID){
+      if(isMe){
         for(const ev of items){
           const row = document.createElement("div");
           row.className = "busy-item busy-item--me";
           row.innerHTML = `
-            <div class="busy-color" style="background:${m.color}"></div>
+            <div class="busy-color" style="background:${m.color || ev.color || "#007AFF"}"></div>
             <div class="busy-main">
-              <div class="busy-name">${escapeHtml(m.name)}
+              <div class="busy-name">${escapeHtml(m.name || m.login || "Вы")}
                 <span class="busy-actions">
                   <button class="busy-action" type="button" data-action="edit" aria-label="Редактировать">✎</button>
                   <button class="busy-action" type="button" data-action="delete" aria-label="Удалить">×</button>
@@ -729,7 +756,6 @@ function createDayCell(date, otherMonth){
               <div class="busy-sub">${escapeHtml(formatTimeRange(ev.start_time, ev.end_time))} • ${escapeHtml(ev.title)}</div>
             </div>
           `;
-
           row.querySelector('[data-action="edit"]')?.addEventListener("click", (e) => {
             e.stopPropagation();
             state.editingEventId = ev.id;
@@ -739,36 +765,32 @@ function createDayCell(date, otherMonth){
             $("eventTimeStart").value = ev.start_time || "";
             $("eventTimeEnd").value = ev.end_time || "";
           });
-
-          row.querySelector('[data-action="delete"]')?.addEventListener("click", (e) => {
+          row.querySelector('[data-action="delete"]')?.addEventListener("click", async (e) => {
             e.stopPropagation();
-            const ok = window.confirm("Уверены что хотите удалить событие?\n\nДа — удалить\nНет — отмена");
+            const ok = window.confirm("Уверены что хотите удалить событие?");
             if(!ok) return;
-            deleteEventById(ev.id);
-            render();
-            openBusySheet(date);
+            try{
+              await fetch(`${API_ORIGIN}/api/events/${ev.id}`, { method: "DELETE", headers: { ...authHeaders() } });
+              deleteEventByIdLocal(ev.id);
+              render();
+              openBusySheet(date);
+            }catch{}
           });
-
           container.appendChild(row);
         }
-        continue;
+      } else {
+        const lines = items.map(ev => `${escapeHtml(formatTimeRange(ev.start_time, ev.end_time))} • ${escapeHtml(ev.title)}`).join("<br/>");
+        const row = document.createElement("div");
+        row.className = "busy-item";
+        row.innerHTML = `
+          <div class="busy-color" style="background:${m.color || "#007AFF"}"></div>
+          <div class="busy-main">
+            <div class="busy-name">${escapeHtml(m.name || m.login || "Участник")}</div>
+            <div class="busy-sub">${lines}</div>
+          </div>
+        `;
+        container.appendChild(row);
       }
-
-      // Others: read-only
-      const lines = items
-        .map(ev => `${escapeHtml(formatTimeRange(ev.start_time, ev.end_time))} • ${escapeHtml(ev.title)}`)
-        .join("<br/>");
-
-      const row = document.createElement("div");
-      row.className = "busy-item";
-      row.innerHTML = `
-        <div class="busy-color" style="background:${m.color}"></div>
-        <div class="busy-main">
-          <div class="busy-name">${escapeHtml(m.name)}</div>
-          <div class="busy-sub">${lines}</div>
-        </div>
-      `;
-      container.appendChild(row);
     }
   }
 
@@ -789,43 +811,46 @@ function createDayCell(date, otherMonth){
     return t;
   }
 
-  function saveFromAdd(){
+  async function saveFromAdd(){
     const title = ($("eventTitle").value || "").trim();
     const date = ($("eventDate").value || "").trim();
     const start = normalizeTime($("eventTimeStart").value);
     const end = normalizeTime($("eventTimeEnd").value);
+    const groupId = currentGroupId();
 
     if(!title){ $("eventTitle").focus(); return; }
     if(!date){ $("eventDate").focus(); return; }
+    if(!groupId){ alert("Сначала выберите группу"); return; }
     if(start && end && start >= end){
       alert("Конец должен быть позже начала.");
       $("eventTimeEnd").focus();
       return;
     }
 
-    if(state.editingEventId){
-      updateEventById(state.editingEventId, {
-        title,
-        date,
-        start_time: start,
-        end_time: end,
-      });
-      state.editingEventId = null;
-    } else {
-      addEvent({
-        id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
-        user_id: CURRENT_USER_ID,
-        title,
-        date,
-        start_time: start,
-        end_time: end,
-        created_at: new Date().toISOString(),
-      });
+    const payload = { title, date, start_time: start, end_time: end, group_id: groupId };
+    try{
+      if(state.editingEventId){
+        await fetch(`${API_ORIGIN}/api/events/${state.editingEventId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", ...authHeaders() },
+          body: JSON.stringify({ title, date, start_time: start, end_time: end })
+        });
+        state.editingEventId = null;
+      } else {
+        await fetch(`${API_ORIGIN}/api/events`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...authHeaders() },
+          body: JSON.stringify(payload)
+        });
+      }
+      await fetchMembers();
+      await fetchEventsForCurrentView();
+      closeAllSheets();
+      render();
+      openBusySheet(new Date(date));
+    }catch(err){
+      alert("Не удалось сохранить событие");
     }
-
-    closeAllSheets();
-    render();
-    openBusySheet(new Date(date));
   }
 
   function init(){
@@ -947,7 +972,30 @@ $("closeBusy").addEventListener("click", closeAllSheets);
     $("closeAdd").addEventListener("click", closeAllSheets);
     $("saveEventBtn").addEventListener("click", saveFromAdd);
 
-    render();
+    document.addEventListener("group:changed", async () => {
+      await fetchMembers();
+      await fetchEventsForCurrentView();
+      render();
+    });
+    document.addEventListener("group:color-updated", async () => {
+      await fetchMembers();
+      await fetchEventsForCurrentView();
+      render();
+    });
+    document.addEventListener("profile:updated", async () => {
+      await fetchMe();
+      await fetchMembers();
+      await fetchEventsForCurrentView();
+      render();
+    });
+    window.addEventListener("auth:ready", async () => {
+      await fetchMe();
+      await fetchMembers();
+      await fetchEventsForCurrentView();
+      render();
+    });
+
+    fetchMe().then(fetchMembers).then(fetchEventsForCurrentView).then(render).catch(render);
     bindSwipe();
   }
 

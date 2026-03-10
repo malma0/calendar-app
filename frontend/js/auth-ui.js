@@ -6,7 +6,7 @@ import {
   requestPasswordReset,
   confirmPasswordReset,
   apiFetch,
-} from "./api.js?v=5011";
+} from "./api.js?v=5014";
 
 function $(id){ return document.getElementById(id); }
 
@@ -38,6 +38,7 @@ function hideOverlay(){
 
 let currentTab = "login";
 let resetFlow = { email: "", token: "", step: "request" };
+let registerDraft = { username: "", email: "", full_name: "" };
 
 function getResetLinksWrap(){
   return document.querySelector("#resetStepVerify .auth-links-col, #resetStepVerify .auth-links-row, #resetStepVerify .auth-links");
@@ -68,13 +69,13 @@ function styleResetLinks(){
   }
 }
 
+function setRegisterStep(step){
+  $("registerStep1")?.classList.toggle("hidden", step !== 1);
+  $("registerStep2")?.classList.toggle("hidden", step !== 2);
+}
+
 function resetToEmailStep(){
   resetFlow.token = "";
-  const tokenBox = $("resetTokenBox");
-  if(tokenBox){
-    tokenBox.textContent = "";
-    tokenBox.classList.add("hidden");
-  }
   if($("resetToken")) $("resetToken").value = "";
   if($("resetNewPassword")) $("resetNewPassword").value = "";
   if($("resetNewPassword2")) $("resetNewPassword2").value = "";
@@ -89,7 +90,6 @@ function setResetStep(step){
   $("resetStepSet")?.classList.toggle("hidden", step !== "set");
 
   const sub = $("resetSubtext");
-  const tokenBox = $("resetTokenBox");
   if (sub) {
     if (step === "request") {
       sub.textContent = "Введите email, указанный при регистрации.";
@@ -101,10 +101,6 @@ function setResetStep(step){
       sub.classList.add("hidden");
     }
   }
-  if (tokenBox) {
-    tokenBox.textContent = "";
-    tokenBox.classList.add("hidden");
-  }
   styleResetLinks();
 }
 
@@ -115,6 +111,7 @@ function switchTab(tab){
   });
   clearError();
   if(tab === "reset") setResetStep("request");
+  if(tab === "register") setRegisterStep(1);
 }
 
 async function verifyToken(){
@@ -149,15 +146,29 @@ async function onLoginSubmit(){
   }
 }
 
-async function onRegisterSubmit(){
+async function onRegisterNext(){
   clearError();
   const username = $("regUsername")?.value.trim();
   const email = $("regEmail")?.value.trim();
+  const full_name = $("regFullName")?.value.trim();
+  if(!username || !email || !full_name) return showError("Заполните login, email и имя");
+  registerDraft = { username, email, full_name };
+  setRegisterStep(2);
+  $("regPassword")?.focus();
+}
+
+async function onRegisterSubmit(){
+  clearError();
   const password = $("regPassword")?.value || "";
-  if(!username || !email || !password) return showError("Заполните логин, email и пароль");
+  const password2 = $("regPassword2")?.value || "";
+  if(!registerDraft.username || !registerDraft.email || !registerDraft.full_name){
+    return showError("Сначала заполните первый шаг регистрации");
+  }
+  if(!password || !password2) return showError("Введите пароль и повторите его");
+  if(password !== password2) return showError("Пароли не совпадают");
   try{
-    await register(username, email, password);
-    await login(email, password, true);
+    await register(registerDraft.username, registerDraft.email, registerDraft.full_name, password);
+    await login(registerDraft.email, password, true);
     markAuthReady();
   }catch(err){
     showError(err?.message || "Ошибка регистрации");
@@ -224,7 +235,9 @@ async function onResetConfirm(){
 
 function wireUI(){
   $("loginBtn")?.addEventListener("click", onLoginSubmit);
+  $("registerNextBtn")?.addEventListener("click", onRegisterNext);
   $("registerBtn")?.addEventListener("click", onRegisterSubmit);
+  $("backToRegisterStep1")?.addEventListener("click", (e) => { e.preventDefault(); setRegisterStep(1); });
 
   $("openRegisterLink")?.addEventListener("click", (e) => { e.preventDefault(); switchTab("register"); });
   $("backToLoginFromRegister")?.addEventListener("click", (e) => { e.preventDefault(); switchTab("login"); });
@@ -243,7 +256,8 @@ function wireUI(){
   });
 
   ["loginIdentifier","loginPassword"].forEach((id) => $(id)?.addEventListener("keydown", (e) => { if(e.key === "Enter") onLoginSubmit(); }));
-  ["regUsername","regEmail","regPassword"].forEach((id) => $(id)?.addEventListener("keydown", (e) => { if(e.key === "Enter") onRegisterSubmit(); }));
+  ["regUsername","regEmail","regFullName"].forEach((id) => $(id)?.addEventListener("keydown", (e) => { if(e.key === "Enter") onRegisterNext(); }));
+  ["regPassword","regPassword2"].forEach((id) => $(id)?.addEventListener("keydown", (e) => { if(e.key === "Enter") onRegisterSubmit(); }));
   $("resetEmail")?.addEventListener("keydown", (e) => { if(e.key === "Enter") onResetRequest(); });
   $("resetToken")?.addEventListener("keydown", (e) => { if(e.key === "Enter") onResetVerify(); });
   $("resetNewPassword")?.addEventListener("keydown", (e) => { if(e.key === "Enter") onResetConfirm(); });

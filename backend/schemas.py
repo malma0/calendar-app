@@ -16,6 +16,11 @@ class UserCreate(UserBase):
     password: str = Field(min_length=6, max_length=128)
 
 
+class UserUpdate(BaseModel):
+    username: str = Field(min_length=3, max_length=50)
+    full_name: Optional[str] = None
+
+
 class UserResponse(UserBase):
     id: int
     color: str = "#007AFF"
@@ -43,6 +48,7 @@ class GroupResponse(GroupBase):
     owner_id: int
     invite_code: str
     created_at: Optional[datetime] = None
+    member_color: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -50,8 +56,8 @@ class GroupResponse(GroupBase):
 
 class GroupMember(BaseModel):
     id: int
-    username: str
-    full_name: Optional[str] = None
+    login: str
+    name: Optional[str] = None
     color: str = "#007AFF"
 
     class Config:
@@ -74,11 +80,21 @@ class EventCreate(EventBase):
     group_id: int
 
 
+class EventUpdate(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    date: date
+    start_time: Optional[time] = None
+    end_time: Optional[time] = None
+
+
 class EventResponse(EventBase):
     id: int
     user_id: int
     group_id: int
     created_at: Optional[datetime] = None
+    creator_login: Optional[str] = None
+    creator_name: Optional[str] = None
+    color: Optional[str] = None
 
     class Config:
         from_attributes = True

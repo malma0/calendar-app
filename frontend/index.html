@@ -92,7 +92,7 @@
         <header class="page-header profile-header" id="profileHeader" role="button" tabindex="0">
           <div class="avatar" id="profileAvatar">👤</div>
           <div>
-            <div class="page-title" id="profileNickname">matthew mal</div>
+            <div class="page-title" id="profileLogin">matthew mal</div>
             <div class="page-sub" id="profileSub">Профиль</div>
           </div>
         </header>
@@ -148,13 +148,13 @@
         </div>
 
         <div class="card">
-          <label class="field-label">Никнейм (видно только вам)</label>
+          <label class="field-label">Login</label>
           <input class="text-input" id="editNickname" type="text" placeholder="Например: matthew mal" />
 
-          <label class="field-label" style="margin-top:14px;">Username (видят другие)</label>
-          <input class="text-input" id="editUsername" type="text" placeholder="Например: matthewmal" />
+          <label class="field-label" style="margin-top:14px;">Имя</label>
+          <input class="text-input" id="editFullName" type="text" placeholder="Например: matthewmal" />
 
-          <div class="hint" style="margin-top:14px;">Пока сохраняем локально (бэк добавим позже).</div>
+          <div class="hint" style="margin-top:14px;"></div>
 
           <button class="danger-btn" id="logoutBtn" type="button">Выйти из профиля</button>
         </div>
@@ -262,9 +262,13 @@
 
       <!-- Переименование (только админ) -->
       <div class="field" id="renameWrap" hidden>
-        <label for="groupNameInput">Название группы</label>
-        <input id="groupNameInput" placeholder="Новое название" />
+        <input id="groupNameInput" placeholder="Название группы" />
         <button class="primary-btn" id="saveGroupNameBtn">Сохранить название</button>
+      </div>
+
+      <div class="sheet-section">
+        <button class="mini-btn" id="leaveGroupBtn" type="button">Выйти из группы</button>
+        <button class="danger-btn" id="deleteGroupBtn" type="button" style="margin-top:10px;" hidden>Удалить группу</button>
       </div>
 
     </div>
@@ -300,14 +304,12 @@
       </div>
       <div class="sheet-body">
         <div class="sheet-section">
-          <div class="section-title">Мои группы</div>
           <div class="groups-list" id="groupsList"></div>
         </div>
 
         <div class="sheet-section">
           <div class="section-title">Создать группу</div>
           <div class="field">
-            <label for="newGroupName">Название</label>
             <div class="input-action-row">
               <input id="newGroupName" placeholder="Например: Работа" />
               <button class="primary-btn primary-btn--inline" id="createGroupBtn" type="button" aria-label="Создать группу">Создать</button>
@@ -493,16 +495,33 @@
 
 			<div class="auth-panel hidden" data-panel="register">
 			  <h2>Регистрация</h2>
-			  <label>Логин
-				<input id="regUsername" type="text" autocomplete="username" placeholder="например: matthewmal" />
-			  </label>
-			  <label>Email
-				<input id="regEmail" type="email" autocomplete="email" placeholder="mail@example.com" />
-			  </label>
-			  <label>Пароль
-				<input id="regPassword" type="password" autocomplete="new-password" />
-			  </label>
-			  <button id="registerBtn" type="button" class="auth-primary">Создать аккаунт</button>
+
+              <div id="registerStep1">
+    			  <label>Login
+    				<input id="regUsername" type="text" autocomplete="username" placeholder="например: matthewmal" />
+    			  </label>
+                  <label>Email
+    				<input id="regEmail" type="email" autocomplete="email" placeholder="mail@example.com" />
+    			  </label>
+                  <label>Имя
+    				<input id="regFullName" type="text" autocomplete="name" placeholder="например: Матвей" />
+    			  </label>
+                  <button id="registerNextBtn" type="button" class="auth-primary">Далее</button>
+              </div>
+
+              <div id="registerStep2" class="hidden">
+                  <label>Пароль
+    				<input id="regPassword" type="password" autocomplete="new-password" />
+    			  </label>
+                  <label>Повторите пароль
+    				<input id="regPassword2" type="password" autocomplete="new-password" />
+    			  </label>
+                  <button id="registerBtn" type="button" class="auth-primary">Создать аккаунт</button>
+                  <div class="auth-links-row center">
+				    <a href="#" id="backToRegisterStep1" class="auth-link">Назад</a>
+			      </div>
+              </div>
+
 			  <div class="auth-links-row center">
 				<a href="#" id="backToLoginFromRegister" class="auth-link">Уже есть аккаунт? Войти</a>
 			  </div>
@@ -564,16 +583,16 @@
 		</div>
 	  </div>
 
-	<script src="js/app.js?v=5013"></script>
-	<script type="module" src="./js/auth-ui.js?v=5013"></script>
+	<script src="js/app.js?v=5014"></script>
+	<script type="module" src="./js/auth-ui.js?v=5014"></script>
 
 	  <script type="module">
-	    import { initFriends } from "./js/friends.js?v=5013";
+	    import { initFriends } from "./js/friends.js?v=5014";
 	    window.addEventListener("auth:ready", () => initFriends(), { once: true });
 	</script>
 
 	  <script type="module">
-	    import { initProfile } from "./js/profile.js?v=5013";
+	    import { initProfile } from "./js/profile.js?v=5014";
 	    window.addEventListener("auth:ready", () => initProfile(), { once: true });
 	  </script>
 

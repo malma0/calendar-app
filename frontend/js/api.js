@@ -26,7 +26,6 @@ export function clearToken(){
 export async function apiFetch(path, { method="GET", body, headers={} } = {}){
   const token = getToken();
   const h = { ...headers };
-
   if(token) h["Authorization"] = `Bearer ${token}`;
   if(body && !(body instanceof FormData)) h["Content-Type"] = "application/json";
 
@@ -71,8 +70,8 @@ export async function login(identifier, password, persist = true){
   return data;
 }
 
-export function register(username, email, password){
-  return apiFetch("/register", { method:"POST", body:{ username, email, password } });
+export function register(username, email, full_name, password){
+  return apiFetch("/register", { method:"POST", body:{ username, email, full_name, password } });
 }
 
 export function requestPasswordReset(email){
@@ -83,34 +82,25 @@ export function confirmPasswordReset(token, new_password){
   return apiFetch("/password/reset", { method:"POST", body:{ token, new_password } });
 }
 
-export function getMyGroups(){
-  return apiFetch("/groups");
+export function getMyGroups(){ return apiFetch("/groups"); }
+export function getGroupMembers(groupId){ return apiFetch(`/groups/${groupId}/members`); }
+export function renameGroup(groupId, name){ return apiFetch(`/groups/${groupId}`, { method:"PUT", body:{ name } }); }
+export function updateMyColor(color){ return apiFetch(`/users/me/color`, { method:"PUT", body:{ color } }); }
+export function getMe(){ return apiFetch("/users/me"); }
+export function updateMe(username, full_name){ return apiFetch("/users/me", { method:"PUT", body:{ username, full_name } }); }
+export function createGroup(name, description=null){ return apiFetch('/groups', { method:'POST', body:{ name, description } }); }
+export function getGroupInvite(groupId){ return apiFetch(`/groups/${groupId}/invite`); }
+export function joinByInvite(inviteCode){ return apiFetch(`/invite/${encodeURIComponent(inviteCode)}/join`, { method: 'POST' }); }
+export function updateGroupColor(groupId, color){ return apiFetch(`/groups/${groupId}/my-color`, { method:'PUT', body:{ color } }); }
+export function leaveGroup(groupId){ return apiFetch(`/groups/${groupId}/leave`, { method:'POST' }); }
+export function deleteGroup(groupId){ return apiFetch(`/groups/${groupId}`, { method:'DELETE' }); }
+export function getEvents(groupId, year, month){
+  const q = new URLSearchParams();
+  if(groupId) q.set('group_id', groupId);
+  if(year) q.set('year', year);
+  if(month) q.set('month', month);
+  return apiFetch(`/events${q.toString() ? `?${q.toString()}` : ''}`);
 }
-
-export function getGroupMembers(groupId){
-  return apiFetch(`/groups/${groupId}/members`);
-}
-
-export function renameGroup(groupId, name){
-  return apiFetch(`/groups/${groupId}`, { method:"PUT", body:{ name } });
-}
-
-export function updateMyColor(color){
-  return apiFetch(`/users/me/color`, { method:"PUT", body:{ color } });
-}
-
-export function getMe(){
-  return apiFetch("/users/me");
-}
-
-export function createGroup(name, description=null){
-  return apiFetch('/groups', { method:'POST', body:{ name, description } });
-}
-
-export function getGroupInvite(groupId){
-  return apiFetch(`/groups/${groupId}/invite`);
-}
-
-export function joinByInvite(inviteCode){
-  return apiFetch(`/invite/${encodeURIComponent(inviteCode)}/join`, { method: 'POST' });
-}
+export function createEvent(payload){ return apiFetch('/events', { method:'POST', body: payload }); }
+export function updateEvent(eventId, payload){ return apiFetch(`/events/${eventId}`, { method:'PUT', body: payload }); }
+export function deleteEvent(eventId){ return apiFetch(`/events/${eventId}`, { method:'DELETE' }); }

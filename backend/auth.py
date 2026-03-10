@@ -50,13 +50,16 @@ def get_current_user(
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str | None = payload.get("sub")
-        if not username:
+        subject: str | None = payload.get("sub")
+        if not subject:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
 
-    user = db.query(models.User).filter(models.User.username == username).first()
+    if str(subject).isdigit():
+        user = db.query(models.User).filter(models.User.id == int(subject)).first()
+    else:
+        user = db.query(models.User).filter(models.User.username == subject).first()
     if not user:
         raise credentials_exception
     return user

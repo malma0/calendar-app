@@ -42,6 +42,7 @@ class GroupMember(Base):
 
     user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
     group_id = Column(Integer, ForeignKey("groups.id"), primary_key=True)
+    color = Column(String, nullable=True, default="#007AFF")
 
     user = relationship("User", back_populates="memberships")
     group = relationship("Group", back_populates="members")
