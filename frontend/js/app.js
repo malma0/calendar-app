@@ -153,8 +153,11 @@ function pad2(n){ return String(n).padStart(2,"0"); }
   }
 
   function formatTime(timeStr){
-    const t = (timeStr||"").trim();
-    if(!t) return "";
+    const raw = (timeStr||"").trim();
+    if(!raw) return "";
+    const isoMatch = raw.match(/T([0-2]\d:[0-5]\d)(?::[0-5]\d)?/);
+    const cleaned = isoMatch ? isoMatch[1] : raw;
+    const t = cleaned.match(/^([0-2]\d):([0-5]\d)(?::[0-5]\d)?$/) ? cleaned.slice(0,5) : cleaned;
     if(settings.timeFormat === "24") return t;
     const m = t.match(/^([0-2]\d):([0-5]\d)$/);
     if(!m) return t;

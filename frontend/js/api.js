@@ -3,9 +3,19 @@ const API_ORIGIN = `${window.location.protocol}//${window.location.hostname}:${A
 export const API_BASE = `${API_ORIGIN}/api`;
 
 const TOKEN_KEY = "auth_token";
+const LEGACY_TOKEN_KEYS = ["auth_token", "access_token", "token", "jwt", "bearer_token", "opentime_token"];
 
 export function getToken(){
-  return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
+  for(const key of LEGACY_TOKEN_KEYS){
+    const value = localStorage.getItem(key) || sessionStorage.getItem(key);
+    if(value){
+      if(key !== TOKEN_KEY){
+        try{ localStorage.setItem(TOKEN_KEY, value); }catch{}
+      }
+      return value;
+    }
+  }
+  return null;
 }
 
 export function setToken(token, persist = true){
@@ -87,7 +97,7 @@ export function getGroupMembers(groupId){ return apiFetch(`/groups/${groupId}/me
 export function renameGroup(groupId, name){ return apiFetch(`/groups/${groupId}`, { method:"PUT", body:{ name } }); }
 export function updateMyColor(color){ return apiFetch(`/users/me/color`, { method:"PUT", body:{ color } }); }
 export function getMe(){ return apiFetch("/users/me"); }
-export function updateMe(username, full_name){ return apiFetch("/users/me", { method:"PUT", body:{ username, full_name } }); }
+export function updateMe(username, full_name, avatar=null){ const body = { username, full_name }; if(avatar !== null) body.avatar = avatar; return apiFetch("/users/me", { method:"PUT", body }); }
 export function createGroup(name, description=null){ return apiFetch('/groups', { method:'POST', body:{ name, description } }); }
 export function getGroupInvite(groupId){ return apiFetch(`/groups/${groupId}/invite`); }
 export function joinByInvite(inviteCode){ return apiFetch(`/invite/${encodeURIComponent(inviteCode)}/join`, { method: 'POST' }); }

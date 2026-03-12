@@ -3,6 +3,13 @@ from __future__ import annotations
 import json
 import random
 import secrets
+import os
+
+try:
+    from pywebpush import webpush, WebPushException
+except Exception:
+    webpush = None
+    WebPushException = Exception
 from datetime import date as dt_date, datetime, timedelta
 from typing import List, Optional
 
@@ -20,6 +27,10 @@ from email_service import send_reset_email
 
 models.Base.metadata.create_all(bind=engine)
 
+VAPID_PUBLIC_KEY = os.getenv("OPENTIME_VAPID_PUBLIC_KEY", "BBk-jAYk9d-Xqte73-7erJLm_6qOXVJ_JDnMoWirw9we1m2IIMZnIs1pNC1I3-LuXfrELhPNL7hpkQT-POeTcuM")
+VAPID_PRIVATE_KEY = os.getenv("OPENTIME_VAPID_PRIVATE_KEY", "p_96APoLgSwNBrAFMxOXVj73hgDEwCEgbuMzhpyPz58")
+VAPID_SUBJECT = os.getenv("OPENTIME_VAPID_SUBJECT", "mailto:opentime@example.com")
+
 
 def _ensure_user_reset_columns() -> None:
     try:
@@ -30,6 +41,17 @@ def _ensure_user_reset_columns() -> None:
                 conn.execute(text("ALTER TABLE users ADD COLUMN reset_token VARCHAR"))
             if "reset_token_expires_at" not in names:
                 conn.execute(text("ALTER TABLE users ADD COLUMN reset_token_expires_at DATETIME"))
+    except Exception:
+        pass
+
+
+def _ensure_users_extra_columns() -> None:
+    try:
+        with engine.begin() as conn:
+            cols = conn.execute(text("PRAGMA table_info(users)")).fetchall()
+            names = {row[1] for row in cols}
+            if "avatar" not in names:
+                conn.execute(text("ALTER TABLE users ADD COLUMN avatar TEXT"))
     except Exception:
         pass
 
@@ -76,6 +98,83 @@ def _ensure_group_members_columns() -> None:
         pass
 
 
+
+
+def _ensure_push_subscriptions_table() -> None:
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS push_subscriptions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    endpoint TEXT NOT NULL UNIQUE,
+                    p256dh TEXT NOT NULL,
+                    auth TEXT NOT NULL,
+                    enabled INTEGER NOT NULL DEFAULT 1,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+    except Exception:
+        pass
+
+
+def _upsert_push_subscription(user_id: int, subscription: dict) -> None:
+    endpoint = str((subscription or {}).get("endpoint") or "").strip()
+    keys = (subscription or {}).get("keys") or {}
+    p256dh = str(keys.get("p256dh") or "").strip()
+    auth = str(keys.get("auth") or "").strip()
+    if not endpoint or not p256dh or not auth:
+        raise HTTPException(status_code=400, detail="Некорректная push-подписка")
+    with engine.begin() as conn:
+        conn.execute(text("""
+            INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, enabled, updated_at)
+            VALUES (:user_id, :endpoint, :p256dh, :auth, 1, CURRENT_TIMESTAMP)
+            ON CONFLICT(endpoint) DO UPDATE SET
+                user_id=excluded.user_id,
+                p256dh=excluded.p256dh,
+                auth=excluded.auth,
+                enabled=1,
+                updated_at=CURRENT_TIMESTAMP
+        """), {"user_id": user_id, "endpoint": endpoint, "p256dh": p256dh, "auth": auth})
+
+
+def _remove_push_subscription(user_id: int, endpoint: str) -> None:
+    if not endpoint:
+        return
+    with engine.begin() as conn:
+        conn.execute(text("DELETE FROM push_subscriptions WHERE user_id=:user_id AND endpoint=:endpoint"), {"user_id": user_id, "endpoint": endpoint})
+
+
+def _send_push_to_users(user_ids: list[int], title: str, body: str, url: str = "/", tag: str = "opentime") -> None:
+    if not user_ids or not webpush or not VAPID_PUBLIC_KEY or not VAPID_PRIVATE_KEY:
+        return
+    unique_ids = sorted({int(uid) for uid in user_ids if uid})
+    if not unique_ids:
+        return
+    with engine.begin() as conn:
+        rows = conn.execute(text(f"SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE enabled=1 AND user_id IN ({','.join(str(uid) for uid in unique_ids)})")).fetchall()
+    payload = json.dumps({"title": title, "body": body, "url": url, "tag": tag})
+    stale = []
+    for row in rows:
+        try:
+            webpush(
+                subscription_info={
+                    "endpoint": row[1],
+                    "keys": {"p256dh": row[2], "auth": row[3]},
+                },
+                data=payload,
+                vapid_private_key=VAPID_PRIVATE_KEY,
+                vapid_claims={"sub": VAPID_SUBJECT},
+                ttl=60,
+            )
+        except Exception as exc:
+            status_code = getattr(getattr(exc, 'response', None), 'status_code', None)
+            if status_code in (404, 410):
+                stale.append(row[0])
+    if stale:
+        with engine.begin() as conn:
+            conn.execute(text(f"DELETE FROM push_subscriptions WHERE id IN ({','.join(str(int(x)) for x in stale)})"))
 
 
 def _ensure_meeting_proposal_tables() -> None:
@@ -271,6 +370,32 @@ def _is_proposal_event(ev) -> bool:
 
 
 
+
+
+def _serialize_user(user):
+    return {
+        "id": user.id,
+        "email": user.email,
+        "username": user.username,
+        "full_name": user.full_name,
+        "color": getattr(user, 'color', None) or "#007AFF",
+        "created_at": getattr(user, 'created_at', None),
+        "avatar": _get_user_avatar_value(user),
+    }
+
+
+def _serialize_group(group, member_color=None, fallback_color="#007AFF"):
+    if isinstance(group, tuple) and len(group) >= 1:
+        group = group[0]
+    return {
+        "id": group.id,
+        "name": group.name,
+        "description": getattr(group, 'description', None),
+        "owner_id": group.owner_id,
+        "invite_code": group.invite_code,
+        "created_at": getattr(group, 'created_at', None),
+        "member_color": member_color or getattr(group, 'member_color', None) or fallback_color or "#007AFF",
+    }
 def _get_user_avatar_value(user):
     for attr in ("avatar_url", "avatar_path", "avatar", "profile_image", "profile_image_url", "photo_url", "image_url"):
         value = getattr(user, attr, None)
@@ -317,6 +442,7 @@ app.add_middleware(
 @app.on_event("startup")
 def _startup_migrations():
     _ensure_user_reset_columns()
+    _ensure_users_extra_columns()
     _ensure_groups_columns()
     _ensure_group_members_columns()
     _ensure_meeting_proposal_tables()
@@ -395,9 +521,34 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     return schemas.Token(access_token=token)
 
 
+@app.get("/api/push/public-key")
+def get_push_public_key(current_user: models.User = Depends(get_current_user)):
+    return {"public_key": VAPID_PUBLIC_KEY, "supported": webpush is not None}
+
+
+@app.post("/api/push/subscribe")
+def subscribe_push(payload: dict = Body(...), current_user: models.User = Depends(get_current_user)):
+    subscription = payload.get("subscription") if isinstance(payload, dict) else None
+    _upsert_push_subscription(current_user.id, subscription or {})
+    return {"ok": True}
+
+
+@app.post("/api/push/unsubscribe")
+def unsubscribe_push(payload: dict = Body(...), current_user: models.User = Depends(get_current_user)):
+    endpoint = str((payload or {}).get("endpoint") or "").strip()
+    _remove_push_subscription(current_user.id, endpoint)
+    return {"ok": True}
+
+
+@app.post("/api/push/test")
+def test_push(current_user: models.User = Depends(get_current_user)):
+    _send_push_to_users([current_user.id], "Тест OpenTime", "Push-уведомления подключены.", "/", "opentime-test")
+    return {"ok": True}
+
+
 @app.get("/api/users/me", response_model=schemas.UserResponse)
 def read_users_me(current_user: models.User = Depends(get_current_user)):
-    return current_user
+    return _serialize_user(current_user)
 
 
 @app.put("/api/users/me", response_model=schemas.UserResponse)
@@ -411,9 +562,11 @@ def update_me(payload: schemas.UserUpdate, current_user: models.User = Depends(g
         raise HTTPException(status_code=400, detail="Login уже занят")
     current_user.username = payload.username
     current_user.full_name = payload.full_name
+    if hasattr(payload, "avatar") and payload.avatar is not None and hasattr(current_user, "avatar"):
+        current_user.avatar = payload.avatar
     db.commit()
     db.refresh(current_user)
-    return current_user
+    return _serialize_user(current_user)
 
 
 @app.post("/api/groups", response_model=schemas.GroupResponse)
@@ -433,7 +586,7 @@ def create_group(group: schemas.GroupCreate, current_user: models.User = Depends
         db.add(models.GroupMember(user_id=current_user.id, group_id=db_group.id, color=current_user.color))
         db.commit()
     setattr(db_group, "member_color", current_user.color)
-    return db_group
+    return _serialize_group(db_group, current_user.color, current_user.color or "#007AFF")
 
 
 @app.get("/api/groups", response_model=List[schemas.GroupResponse])
@@ -447,8 +600,7 @@ def get_my_groups(current_user: models.User = Depends(get_current_user), db: Ses
     )
     result = []
     for group, member_color in groups:
-        setattr(group, "member_color", member_color or current_user.color or "#007AFF")
-        result.append(group)
+        result.append(_serialize_group(group, member_color, current_user.color or "#007AFF"))
     return result
 
 
@@ -464,7 +616,7 @@ def get_group(group_id: int, current_user: models.User = Depends(get_current_use
         raise HTTPException(status_code=404, detail="Группа не найдена или вы не состоите в ней")
     group, member_color = row
     setattr(group, "member_color", member_color or current_user.color or "#007AFF")
-    return group
+    return _serialize_group(group, member_color, current_user.color or "#007AFF")
 
 
 @app.get("/api/groups/{group_id}/members", response_model=List[schemas.GroupMember])
@@ -518,7 +670,7 @@ def update_group_color(group_id: int, payload: schemas.UserColorUpdate, current_
     db.commit()
     db.refresh(group)
     setattr(group, "member_color", payload.color)
-    return group
+    return _serialize_group(group, payload.color, current_user.color or "#007AFF")
 
 
 @app.post("/api/groups/{group_id}/leave")
@@ -590,7 +742,7 @@ def join_by_invite(invite_code: str, current_user: models.User = Depends(get_cur
         db.commit()
     db.refresh(group)
     setattr(group, "member_color", current_user.color)
-    return group
+    return _serialize_group(group, current_user.color, current_user.color or "#007AFF")
 
 
 @app.put("/api/users/me/color", response_model=schemas.UserResponse)
@@ -621,6 +773,12 @@ def create_event(event: schemas.EventCreate, current_user: models.User = Depends
     db.add(db_event)
     db.commit()
     db.refresh(db_event)
+    if not is_proposal:
+        member_ids = [row[0] for row in db.query(models.GroupMember.user_id).filter(models.GroupMember.group_id == event.group_id, models.GroupMember.user_id != current_user.id).all()]
+        if member_ids:
+            group = db.query(models.Group).filter_by(id=event.group_id).first()
+            when = f"{event.date.strftime('%d.%m')} · {db_event.start_time.strftime('%H:%M') if db_event.start_time else ''}".strip()
+            _send_push_to_users(member_ids, f"Новый план в группе «{group.name if group else 'OpenTime'}»", f"{current_user.full_name or current_user.username}: {db_event.title} {when}".strip(), "/", "opentime-event")
     return {
         **db_event.__dict__,
         "creator_login": current_user.username,
@@ -977,6 +1135,10 @@ def create_meeting_proposal(payload: dict, current_user: models.User = Depends(g
         VALUES (:proposal_id, :user_id, 'yes')
     """), {"proposal_id": proposal_id, "user_id": current_user.id})
     db.commit()
+    member_ids = [row[0] for row in db.query(models.GroupMember.user_id).filter(models.GroupMember.group_id == group_id, models.GroupMember.user_id != current_user.id).all()]
+    if member_ids:
+        group = db.query(models.Group).filter_by(id=group_id).first()
+        _send_push_to_users(member_ids, f"Новый сбор в группе «{group.name if group else 'OpenTime'}»", f"{current_user.full_name or current_user.username}: {title} · {parsed_date.strftime('%d.%m')} {parsed_start.strftime('%H:%M')}–{parsed_end.strftime('%H:%M')}", "/", "opentime-proposal")
 
     created = db.execute(text("""
         SELECT mp.*,

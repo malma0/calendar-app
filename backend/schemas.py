@@ -19,14 +19,17 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     username: str = Field(min_length=3, max_length=50)
     full_name: Optional[str] = None
+    avatar: Optional[str] = None
 
 
 class UserResponse(UserBase):
     id: int
     color: str = "#007AFF"
     created_at: Optional[datetime] = None
+    avatar: Optional[str] = None
 
     class Config:
+        orm_mode = True
         from_attributes = True
 
 
@@ -51,6 +54,7 @@ class GroupResponse(GroupBase):
     member_color: Optional[str] = None
 
     class Config:
+        orm_mode = True
         from_attributes = True
 
 
@@ -59,8 +63,10 @@ class GroupMember(BaseModel):
     login: str
     name: Optional[str] = None
     color: str = "#007AFF"
+    avatar: Optional[str] = None
 
     class Config:
+        orm_mode = True
         from_attributes = True
 
 
@@ -94,9 +100,11 @@ class EventResponse(EventBase):
     created_at: Optional[datetime] = None
     creator_login: Optional[str] = None
     creator_name: Optional[str] = None
+    creator_avatar: Optional[str] = None
     color: Optional[str] = None
 
     class Config:
+        orm_mode = True
         from_attributes = True
 
 

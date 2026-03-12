@@ -412,25 +412,6 @@
               </label>
             </div>
 
-            <div class="toggle-row">
-              <div class="toggle-text">
-                <div class="toggle-title">Уведомление о свободном дне</div>
-              </div>
-              <label class="switch">
-                <input type="checkbox" id="notifFreeDay">
-                <span class="slider"></span>
-              </label>
-            </div>
-
-            <div class="toggle-row">
-              <div class="toggle-text">
-                <div class="toggle-title">Уведомление о свободном окне</div>
-              </div>
-              <label class="switch">
-                <input type="checkbox" id="notifFreeSlot">
-                <span class="slider"></span>
-              </label>
-            </div>
 
             <div class="toggle-row">
               <div class="toggle-text">
@@ -628,7 +609,7 @@
 	  </div>
 
 	<script src="js/app.js?v=5034"></script>
-	<script type="module" src="./js/auth-ui.js?v=5034"></script>
+	<script type="module" src="./js/auth-ui.js?v=50155034"></script>
 
 	  <script type="module">
 	    import { initFriends } from "./js/friends.js?v=5034";
@@ -636,7 +617,7 @@
 	</script>
 
 	  <script type="module">
-	    import { initProfile } from "./js/profile.js?v=5034";
+	    import { initProfile } from "./js/profile.js?v=50155034";
 	    window.addEventListener("auth:ready", () => initProfile(), { once: true });
 	  </script>
 
@@ -658,8 +639,10 @@
 	</script>
 
 	<script type="module">
-	  import { initProposalNotifications } from "./js/proposal-notifications.js?v=5034";
+	  import { initProposalNotifications } from "./js/proposal-notifications.js?v=5035";
 	  window.addEventListener("auth:ready", () => initProposalNotifications(), { once: true });
 	</script>
+
+	<script type="module" src="./js/push.js?v=5101"></script>
 </body>
 </html>

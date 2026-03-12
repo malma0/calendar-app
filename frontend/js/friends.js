@@ -239,7 +239,7 @@ async function renderMeetingProposalsBlock(){
         <button class="proposal-launcher" type="button" id="openGroupProposalsBtn">
           <div class="proposal-launcher-main">
             <div class="proposal-launcher-title">Предложения группы</div>
-            <div class="proposal-launcher-sub">Ближайшее: ${escapeHtml(next.date)} · ${escapeHtml(next.start_time)}–${escapeHtml(next.end_time)}. Нажмите, чтобы открыть все предложения и проголосовать.</div>
+            <div class="proposal-launcher-sub">Ближайшее: ${escapeHtml(String(next.date||'').split('-').reverse().slice(0,2).join('.'))} · ${escapeHtml(String(next.start_time||'').slice(0,5))}–${escapeHtml(String(next.end_time||'').slice(0,5))}. Нажмите, чтобы открыть все предложения и проголосовать.</div>
           </div>
           <div class="proposal-launcher-badge" id="openGroupProposalsBadge">${proposals.length}</div>
           <span class="proposal-launcher-dot" id="openGroupProposalsDot" hidden></span>

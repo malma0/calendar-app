@@ -51,8 +51,6 @@ function getFeedViewedAt(){ return Number(localStorage.getItem(KEYS.feedViewedAt
 function setFeedViewedAt(ts){ localStorage.setItem(KEYS.feedViewedAt, String(ts || Date.now())); }
 function masterEnabled(){ return localStorage.getItem(KEYS.master) !== '0'; }
 function plansEnabled(){ return localStorage.getItem(KEYS.plans) !== '0'; }
-function freeDayEnabled(){ return localStorage.getItem(KEYS.freeDay) !== '0'; }
-function freeSlotEnabled(){ return localStorage.getItem(KEYS.freeSlot) !== '0'; }
 function proposalEnabled(){ return localStorage.getItem(KEYS.proposal) !== '0'; }
 function proposalNotificationsEnabled(){ return masterEnabled() && proposalEnabled(); }
 function browserNotificationsEnabled(){ return masterEnabled() && (plansEnabled() || proposalEnabled()); }
@@ -171,30 +169,9 @@ function renderNotificationFeed(){
   }).join('');
 }
 function ensureFeedUi(){
-  const sheetBody = document.querySelector('#notificationsSheet .sheet-body');
-  if (!sheetBody || $('notificationsFeedWrap')) return;
-  const section = document.createElement('div');
-  section.className = 'sheet-section';
-  section.id = 'notificationsFeedWrap';
-  section.innerHTML = `
-    <div class="section-title">Недавние уведомления</div>
-    <div class="notifications-feed-list" id="notificationsFeedList"></div>
-  `;
-  sheetBody.appendChild(section);
-  sheetBody.addEventListener('click', (e) => {
-    const item = e.target.closest('.notification-item');
-    if (!item) return;
-    const type = item.dataset.type;
-    const groupId = Number(item.dataset.groupId || 0) || null;
-    if (type === 'proposal' && groupId){
-      document.dispatchEvent(new CustomEvent('proposal:list-group', { detail: { groupId } }));
-      $('closeNotifications')?.click();
-    }
-    setFeedViewedAt(Date.now());
-    applyBadges(lastSummary);
-  });
-  notificationsUiReady = true;
-  renderNotificationFeed();
+  const existing = $('notificationsFeedWrap');
+  if (existing) existing.remove();
+  notificationsUiReady = false;
 }
 async function bootstrapKnownItems(){
   await ensureCurrentUser();
@@ -279,8 +256,6 @@ async function pollNotifications(){
 function bindToggles(){
   ensureCheckbox('notifMaster', masterEnabled());
   ensureCheckbox('notifPlans', plansEnabled());
-  ensureCheckbox('notifFreeDay', freeDayEnabled());
-  ensureCheckbox('notifFreeSlot', freeSlotEnabled());
   ensureCheckbox('notifGroupProposals', proposalEnabled());
   updateSubtoggles();
   $('notifMaster')?.addEventListener('change', e => {
@@ -290,8 +265,6 @@ function bindToggles(){
     refreshBadges();
   });
   $('notifPlans')?.addEventListener('change', e => { localStorage.setItem(KEYS.plans, e.target.checked ? '1' : '0'); requestBrowserPermission(); pollNotifications(); });
-  $('notifFreeDay')?.addEventListener('change', e => { localStorage.setItem(KEYS.freeDay, e.target.checked ? '1' : '0'); });
-  $('notifFreeSlot')?.addEventListener('change', e => { localStorage.setItem(KEYS.freeSlot, e.target.checked ? '1' : '0'); });
   $('notifGroupProposals')?.addEventListener('change', e => {
     localStorage.setItem(KEYS.proposal, e.target.checked ? '1' : '0');
     requestBrowserPermission();

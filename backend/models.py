@@ -13,6 +13,7 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
 
     full_name = Column(String, nullable=True)
+    avatar = Column(Text, nullable=True)
     color = Column(String, nullable=True, default="#007AFF")
     created_at = Column(DateTime, nullable=True, default=datetime.utcnow)
 

@@ -93,7 +93,7 @@ function renderProposalList(list){
         <div class="proposal-card-top">
           <div>
             <div class="proposal-title">${escapeHtml(item.title)}</div>
-            <div class="proposal-meta">${escapeHtml(item.date)} · ${escapeHtml(item.start_time)}–${escapeHtml(item.end_time)} · создал ${escapeHtml(item.creator_name)}</div>
+            <div class="proposal-meta">${escapeHtml(item.date)} · ${escapeHtml(String(item.start_time||'').slice(0,5))}–${escapeHtml(String(item.end_time||'').slice(0,5))} · создал ${escapeHtml(item.creator_name)}</div>
           </div>
           <div class="proposal-badge">СБОР</div>
         </div>

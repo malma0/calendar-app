@@ -1,14 +1,13 @@
-import { getMe, clearToken, updateMe } from "./api.js?v=5014";
+import { getMe, clearToken, updateMe } from "./api.js?v=5015";
 
 const LS = {
   avatar: "profile_avatar",
   theme: "theme_mode",
   notifMaster: "notif_master",
   notifPlans: "notif_plans",
-  notifFreeDay: "notif_free_day",
-  notifFreeSlot: "notif_free_slot",
   weekStart: "weekStart",
   timeFormat: "timeFormat",
+  notifGroupProposals: "notif_group_proposals",
 };
 
 function byId(id) { return document.getElementById(id); }
@@ -98,8 +97,7 @@ function initSettingsExtras(){
 function ensureNotifDefaults() {
   if (localStorage.getItem(LS.notifMaster) === null) localStorage.setItem(LS.notifMaster, "1");
   if (localStorage.getItem(LS.notifPlans) === null) localStorage.setItem(LS.notifPlans, "1");
-  if (localStorage.getItem(LS.notifFreeDay) === null) localStorage.setItem(LS.notifFreeDay, "1");
-  if (localStorage.getItem(LS.notifFreeSlot) === null) localStorage.setItem(LS.notifFreeSlot, "1");
+  if (localStorage.getItem(LS.notifGroupProposals) === null) localStorage.setItem(LS.notifGroupProposals, "1");
 }
 function animateCollapse(el, open) {
   if (!el) return;
@@ -127,17 +125,15 @@ function setNotifUIFromStorage() {
   ensureNotifDefaults();
   const master = localStorage.getItem(LS.notifMaster) === "1";
   const plans = localStorage.getItem(LS.notifPlans) === "1";
-  const freeDay = localStorage.getItem(LS.notifFreeDay) === "1";
-  const freeSlot = localStorage.getItem(LS.notifFreeSlot) === "1";
+  const groupProposals = localStorage.getItem(LS.notifGroupProposals) === "1";
   if (byId("notifMaster")) byId("notifMaster").checked = master;
   if (byId("notifPlans")) byId("notifPlans").checked = plans;
-  if (byId("notifFreeDay")) byId("notifFreeDay").checked = freeDay;
-  if (byId("notifFreeSlot")) byId("notifFreeSlot").checked = freeSlot;
+  if (byId("notifGroupProposals")) byId("notifGroupProposals").checked = groupProposals;
   animateCollapse(byId("notifSubWrap"), master);
 }
 
 function renderProfileHeader(me) {
-  setAvatarEl(byId("profileAvatar"), getLocalAvatar());
+  setAvatarEl(byId("profileAvatar"), me?.avatar || getLocalAvatar());
   if (byId("profileLogin")) byId("profileLogin").textContent = me?.username || "Профиль";
 }
 
@@ -146,7 +142,7 @@ function openProfileEdit(me) {
   if (!fs) return;
   if (byId("editNickname")) byId("editNickname").value = me?.username || "";
   if (byId("editFullName")) byId("editFullName").value = me?.full_name || "";
-  setAvatarEl(byId("editAvatarPreview"), getLocalAvatar());
+  setAvatarEl(byId("editAvatarPreview"), me?.avatar || getLocalAvatar());
   fs.hidden = false;
   fs.style.display = "flex";
   requestAnimationFrame(() => fs.classList.add("open"));
@@ -234,14 +230,21 @@ export async function initProfile() {
     localStorage.setItem(LS.avatar, dataUrl);
     setAvatarEl(byId("editAvatarPreview"), dataUrl);
     setAvatarEl(byId("profileAvatar"), dataUrl);
+    try{
+      const username = (byId("editNickname")?.value || me?.username || "").trim();
+      const full_name = (byId("editFullName")?.value || me?.full_name || "").trim();
+      me = await updateMe(username, full_name, dataUrl);
+      renderProfileHeader(me);
+      document.dispatchEvent(new CustomEvent("profile:updated", { detail: { me } }));
+    }catch{}
   });
 
   byId("notifMaster")?.addEventListener("change", (e) => {
     const on = !!e.target.checked;
     localStorage.setItem(LS.notifMaster, on ? "1" : "0");
     animateCollapse(byId("notifSubWrap"), on);
+    document.dispatchEvent(new CustomEvent("notifications:settings-changed"));
   });
-  byId("notifPlans")?.addEventListener("change", (e) => localStorage.setItem(LS.notifPlans, e.target.checked ? "1":"0"));
-  byId("notifFreeDay")?.addEventListener("change", (e) => localStorage.setItem(LS.notifFreeDay, e.target.checked ? "1":"0"));
-  byId("notifFreeSlot")?.addEventListener("change", (e) => localStorage.setItem(LS.notifFreeSlot, e.target.checked ? "1":"0"));
+  byId("notifPlans")?.addEventListener("change", (e) => { localStorage.setItem(LS.notifPlans, e.target.checked ? "1":"0"); document.dispatchEvent(new CustomEvent("notifications:settings-changed")); });
+  byId("notifGroupProposals")?.addEventListener("change", (e) => { localStorage.setItem(LS.notifGroupProposals, e.target.checked ? "1":"0"); document.dispatchEvent(new CustomEvent("notifications:settings-changed")); });
 }

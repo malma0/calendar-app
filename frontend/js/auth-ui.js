@@ -6,7 +6,7 @@ import {
   requestPasswordReset,
   confirmPasswordReset,
   apiFetch,
-} from "./api.js?v=5014";
+} from "./api.js?v=5015";
 
 function $(id){ return document.getElementById(id); }
 
@@ -120,9 +120,13 @@ async function verifyToken(){
   try{
     await apiFetch("/users/me");
     return true;
-  }catch{
-    clearToken();
-    return false;
+  }catch(err){
+    const msg = String(err?.message || "");
+    if(msg.includes("401") || msg.includes("403") || msg.toLowerCase().includes("not authenticated")){
+      clearToken();
+      return false;
+    }
+    return true;
   }
 }
 
