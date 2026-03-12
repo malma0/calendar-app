@@ -24,7 +24,7 @@
   --shadow2: 0 10px 30px rgba(0,0,0,0.35);
 }
 
-*{ box-sizing:border-box; margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif; }
+*{ box-sizing:border-box; margin:0; padding:0; font-family:"SF Pro Display","SF Pro Text",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
 html,body{ height:100%; background:var(--bg); color:var(--text); }
 body{ -webkit-tap-highlight-color: transparent; }
 
@@ -263,6 +263,31 @@ body{ -webkit-tap-highlight-color: transparent; }
   display:flex;
   gap: 12px;
   align-items:center;
+  background-image:none !important;
+}
+
+#profileHeader,
+#profileHeader::before,
+#profileHeader::after{
+  background-image:none !important;
+}
+
+.avatar img,
+.avatar.big img,
+#profileAvatar img,
+#editAvatarPreview img{
+  width:100%;
+  height:100%;
+  display:block;
+  object-fit:cover;
+  object-position:center;
+}
+
+#profileAvatar,
+#editAvatarPreview{
+  background-position:center;
+  background-repeat:no-repeat;
+  background-size:cover;
 }
 .avatar{
   width:44px;
@@ -270,6 +295,11 @@ body{ -webkit-tap-highlight-color: transparent; }
   border-radius: 16px;
   border: 1px solid var(--stroke);
   background: var(--card);
+  overflow:hidden;
+  flex: 0 0 auto;
+  background-position:center;
+  background-repeat:no-repeat;
+  background-size:cover;
   display:flex;
   align-items:center;
   justify-content:center;
@@ -383,11 +413,13 @@ body{ -webkit-tap-highlight-color: transparent; }
 .sheet-backdrop{
   position:fixed;
   inset:0;
-  /* Solid backdrop that matches current theme (no translucent dim) */
-  background: var(--bg);
-z-index: 80;
+  background:
+    radial-gradient(900px 600px at 20% 0%, rgba(255,255,255,0.04), transparent 55%),
+    radial-gradient(800px 600px at 90% 25%, rgba(232,196,90,0.05), transparent 58%),
+    rgba(8,9,12,0.16);
+  z-index: 80;
   opacity: 0;
-  transition: opacity .28s ease;
+  transition: opacity .34s ease;
 }
 
 .sheet{
@@ -407,6 +439,23 @@ z-index: 80;
   transition: transform .28s ease;
 }
 .sheet.open{ transform: translateY(0); }
+
+#groupSheet{
+  top: max(12px, env(safe-area-inset-top));
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  max-height: calc(100dvh - 110px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+}
+
+#groupSheet .sheet-body{
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
+}
+
 
 .sheet-handle{
   width: 54px;
@@ -629,6 +678,10 @@ box-shadow: var(--shadow);
   display:flex;
   flex-direction:column;
   gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 2px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .member-item{
@@ -965,7 +1018,7 @@ body.theme-light .text-input{
   overflow: hidden;
   max-height: 0;
   opacity: 0;
-  transition: max-height .22s ease, opacity .18s ease;
+  transition: max-height .36s ease, opacity .28s ease;
 }
 .collapse.is-open{
   opacity: 1;
@@ -1020,13 +1073,27 @@ body.theme-light .text-input{
 .danger-btn{
   margin-top: 22px;
   width:100%;
+  height: 52px;
   padding: 14px 16px;
   border-radius: 18px;
   border: 1px solid rgba(255,77,77,0.35);
   background: rgba(255,77,77,0.14);
   color: var(--text);
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 950;
+  letter-spacing: .2px;
   cursor:pointer;
+}
+
+.group-danger-actions{
+  display:flex;
+  gap:10px;
+  align-items:stretch;
+}
+
+.danger-btn-half{
+  flex:1 1 0;
+  margin-top: 0;
 }
 
 /* ===== Profile edit (fullscreen) - markup helpers =====
@@ -1548,3 +1615,1193 @@ body.fullscreen-open .tabbar{ display:none; }
   word-break: break-all;
 }
 .auth-token.hidden{ display:none; }
+
+
+/* ===== Typography + button alignment tune-up (project-wide) ===== */
+button,
+.primary-btn,
+.danger-btn,
+.sheet-close,
+.seg-btn,
+.icon-btn,
+.icon-mini-btn,
+.week-back-btn{
+  font-family: inherit;
+}
+
+.primary-btn,
+.danger-btn,
+.week-back-btn,
+.seg-btn{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  line-height: 1.15;
+}
+
+.primary-btn,
+.danger-btn{
+  letter-spacing: .1px;
+}
+
+.sheet-title,
+.fs-title,
+.groups-name,
+.toggle-title,
+.row-text,
+.up-title,
+.member-top,
+.busy-name{
+  font-family: inherit;
+}
+
+.sheet-title,
+.fs-title{
+  font-size: 20px;
+  font-weight: 950;
+  letter-spacing: -0.3px;
+}
+
+.groups-name{
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: -0.1px;
+}
+
+.toggle-title,
+.row-text,
+.up-title{
+  font-weight: 800;
+}
+
+.field input,
+.text-input,
+#groupNameInput{
+  font-family: inherit;
+  font-weight: 800;
+}
+
+#groupSheet .primary-btn,
+#groupSheet .danger-btn{
+  font-size: 16px;
+  font-weight: 950;
+}
+
+#groupSheet .group-danger-actions{
+  align-items: stretch;
+}
+
+#groupSheet .danger-btn-half{
+  min-height: 86px;
+  height: auto;
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+
+/* ===== Round 3 UI tune-up ===== */
+.danger-btn{
+  font-size: 15px;
+}
+#groupSheet .danger-btn-half{
+  min-height: 72px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+.week-back-btn{
+  font-size: 18px;
+  font-weight: 950;
+}
+.field-label{
+  font-size: 16px;
+  font-weight: 900;
+  margin-bottom: 10px;
+}
+.text-input{
+  height: 54px;
+  font-size: 17px;
+  font-weight: 850;
+}
+#page-profile .card .field-label,
+#page-profile .card label,
+#profileEdit .field-label{
+  letter-spacing: -0.1px;
+}
+.free-window-result-main{
+  font-size: 17px;
+  font-weight: 850;
+  line-height: 1.35;
+  color: rgba(255,255,255,0.92);
+}
+.free-window-result-sub{
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: rgba(255,255,255,0.62);
+}
+.free-window-alt-wrap{
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.free-window-alt-title{
+  font-size: 13px;
+  font-weight: 900;
+  color: rgba(255,255,255,0.62);
+  margin-bottom: 8px;
+}
+.free-window-alt-item{
+  font-size: 15px;
+  font-weight: 800;
+  color: rgba(250,241,220,0.92);
+  padding: 6px 0;
+}
+
+
+/* ===== Round 4 meeting proposal tune-up ===== */
+#groupSheet .danger-btn-half{
+  min-height: 62px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  font-size: 14px;
+}
+.week-back-btn{
+  font-size: 20px;
+  font-weight: 950;
+}
+#profileEdit .field-label,
+#page-profile .field-label{
+  font-size: 18px;
+  font-weight: 950;
+}
+#profileEdit .text-input{
+  height: 56px;
+  font-size: 18px;
+}
+.windows-card{
+  margin-top: 12px;
+}
+.windows-list{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.window-item{
+  display:flex;
+  gap:12px;
+  align-items:flex-start;
+  padding:12px 14px;
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,0.10);
+  background:rgba(255,255,255,0.04);
+}
+.window-item-main{ flex:1; min-width:0; }
+.window-item-title{
+  font-size:15px;
+  font-weight:900;
+  color:rgba(250,241,220,0.95);
+}
+.window-item-sub{
+  margin-top:4px;
+  font-size:13px;
+  color:rgba(255,255,255,0.66);
+  line-height:1.35;
+}
+.window-item-badge{
+  flex:0 0 auto;
+  min-width:72px;
+  text-align:center;
+  padding:8px 10px;
+  border-radius:14px;
+  border:1px solid rgba(232,196,90,0.24);
+  background:rgba(232,196,90,0.10);
+  color:rgba(250,241,220,0.94);
+  font-size:12px;
+  font-weight:900;
+}
+.free-window-suggest-wrap{
+  margin-top: 6px;
+  padding: 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+}
+#freeWindowCreateBtn{
+  margin-top: 10px;
+}
+#freeWindowResult .window-item{
+  margin-top: 10px;
+}
+
+
+/* ===== Round 5 proposal fixes ===== */
+.groups-item.is-selected{
+  border-color: rgba(232,196,90,0.34);
+  box-shadow: 0 0 0 1px rgba(232,196,90,0.18) inset;
+}
+.window-item--pick{
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+.window-item--pick.is-primary{
+  border-color: rgba(232,196,90,0.26);
+  background: rgba(232,196,90,0.08);
+}
+.window-item--pick .window-item-badge{
+  min-width: 84px;
+}
+#friendsWindowsCard{
+  margin-top: 14px;
+}
+
+/* ===== Round 6 meeting proposals / voting ===== */
+#meetingProposalPage{
+  z-index: 230;
+}
+.meeting-body{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.meeting-card{
+  padding:16px;
+}
+#meetingGroupSelect{
+  appearance:none;
+}
+.meeting-tools-title{
+  margin-top:16px;
+  margin-bottom:10px;
+  font-size:15px;
+  font-weight:900;
+  color:rgba(250,241,220,0.90);
+}
+.meeting-suggest-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.meeting-suggest-item{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px 14px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,0.10);
+  background:rgba(255,255,255,0.04);
+  color:var(--text);
+  font-size:14px;
+  font-weight:850;
+}
+.meeting-suggest-item.is-primary{
+  border-color: rgba(232,196,90,0.26);
+  background: rgba(232,196,90,0.08);
+}
+#meetingProposalsList{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.proposal-card{
+  padding:14px;
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,0.10);
+  background:rgba(255,255,255,0.04);
+}
+.proposal-card--compact .proposal-card-desc{
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+.proposal-card-top{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:flex-start;
+}
+.proposal-card-title{
+  font-size:17px;
+  font-weight:950;
+  line-height:1.2;
+  color:rgba(250,241,220,0.96);
+}
+.proposal-card-sub{
+  margin-top:5px;
+  font-size:13px;
+  line-height:1.35;
+  color:rgba(255,255,255,0.66);
+}
+.proposal-card-desc{
+  margin-top:10px;
+  font-size:14px;
+  line-height:1.4;
+  color:rgba(255,255,255,0.84);
+}
+.proposal-vote-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:12px;
+}
+.proposal-vote-chip{
+  padding:7px 10px;
+  border-radius:999px;
+  border:1px solid rgba(232,196,90,0.24);
+  background:rgba(232,196,90,0.10);
+  color:rgba(250,241,220,0.94);
+  font-size:12px;
+  font-weight:900;
+}
+.proposal-vote-chip--muted{
+  border-color:rgba(255,255,255,0.12);
+  background:rgba(255,255,255,0.05);
+  color:rgba(255,255,255,0.76);
+}
+.proposal-vote-actions{
+  display:flex;
+  gap:10px;
+  margin-top:12px;
+}
+.vote-btn{
+  flex:1;
+  min-height:46px;
+  border-radius:16px;
+  border:1px solid rgba(232,196,90,0.24);
+  background:rgba(232,196,90,0.10);
+  color:rgba(250,241,220,0.95);
+  font-size:15px;
+  font-weight:950;
+}
+.vote-btn--muted{
+  border-color:rgba(255,255,255,0.10);
+  background:rgba(255,255,255,0.04);
+  color:rgba(255,255,255,0.86);
+}
+.vote-btn.is-active{
+  box-shadow:0 0 0 1px rgba(232,196,90,0.30) inset;
+  transform:translateY(-1px);
+}
+#friendsWindowsCard{
+  max-height:320px;
+  overflow:auto;
+}
+
+
+/* ===== Round 7 proposal form polish ===== */
+.meeting-fs-header{
+  padding: 10px 16px 4px;
+  height: auto;
+  align-items: center;
+}
+.fs-text-btn{
+  min-width: 88px;
+  height: 42px;
+  padding: 0 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.06);
+  color: rgba(250,241,220,0.96);
+  font-size: 15px;
+  font-weight: 900;
+}
+.fs-header-spacer{
+  width: 88px;
+  height: 42px;
+}
+.meeting-body--form-only{
+  padding-top: 10px;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 120px);
+}
+.meeting-card--form{
+  padding: 18px 16px 20px;
+}
+#meetingProposalPage .field-label{
+  font-size: 17px;
+  font-weight: 950;
+}
+#meetingProposalPage .text-input{
+  min-height: 58px;
+  font-size: 17px;
+  font-weight: 850;
+}
+#meetingProposalPage .field-row{
+  gap: 12px;
+}
+.text-area-input{
+  min-height: 112px;
+  resize: vertical;
+  padding-top: 16px;
+  padding-bottom: 16px;
+  line-height: 1.35;
+}
+.meeting-submit-wrap{
+  position: sticky;
+  bottom: 0;
+  margin-top: 18px;
+  padding-top: 8px;
+  background: linear-gradient(180deg, rgba(8,8,12,0), rgba(8,8,12,0.82) 35%, rgba(8,8,12,0.96));
+}
+#freeWindowCreateBtn{
+  min-height: 60px;
+  font-size: 18px;
+  font-weight: 950;
+}
+@media (max-width: 420px){
+  #meetingProposalPage .text-input{
+    font-size: 16px;
+  }
+  .text-area-input{
+    min-height: 100px;
+  }
+}
+
+
+/* ===== Round 8 meeting screen / profile sheet polish ===== */
+#meetingProposalPage{
+  z-index: 230;
+  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
+}
+#meetingProposalPage[hidden]{
+  display:none !important;
+}
+.meeting-page-header{
+  flex: 0 0 auto;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:14px;
+  padding: calc(16px + env(safe-area-inset-top)) 16px 8px;
+}
+.meeting-page-title{
+  font-size: 28px;
+  line-height: 1.05;
+  font-weight: 950;
+  letter-spacing: -0.5px;
+  color: rgba(250,241,220,0.98);
+  max-width: 100%;
+}
+.fs-text-btn--back{
+  min-width: 0;
+  padding: 0 18px;
+}
+.meeting-body{
+  flex:1 1 auto;
+  min-height:0;
+  display:block;
+}
+.meeting-body--form-only{
+  overflow-y:auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px 16px calc(28px + env(safe-area-inset-bottom));
+}
+.meeting-card--form{
+  min-height: calc(100% - 8px);
+  padding: 18px 16px 22px;
+  margin-bottom: 0;
+}
+#meetingProposalPage .field-label{
+  display:block;
+  font-size: 17px;
+  line-height: 1.15;
+  font-weight: 950;
+  margin-bottom: 8px;
+}
+#meetingProposalPage .text-input,
+#meetingProposalPage select.text-input,
+#meetingProposalPage textarea.text-input{
+  width:100%;
+  min-width:0;
+  min-height:58px;
+  font-size:17px;
+  font-weight:850;
+}
+#meetingProposalPage .field-row{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap:12px;
+  align-items:start;
+}
+.text-area-input{
+  min-height: 128px;
+  resize: vertical;
+  padding-top: 16px;
+  padding-bottom: 16px;
+  line-height: 1.35;
+}
+.meeting-submit-wrap{
+  position: static;
+  margin-top: 20px;
+  padding-top: 0;
+  background: transparent;
+}
+#freeWindowCreateBtn{
+  min-height: 60px;
+  font-size: 18px;
+  font-weight: 950;
+}
+#notificationsSheet,
+#settingsSheet{
+  transition: transform .36s ease;
+}
+@media (max-width: 420px){
+  .meeting-page-title{
+    font-size: 25px;
+  }
+  #meetingProposalPage .field-row{
+    grid-template-columns: 1fr 1fr;
+  }
+  #meetingProposalPage .text-input,
+  #meetingProposalPage select.text-input,
+  #meetingProposalPage textarea.text-input{
+    font-size: 16px;
+  }
+}
+
+
+/* ===== Round 9 meeting page mobile layout fix ===== */
+#meetingProposalPage{
+  background: linear-gradient(180deg, var(--bg), var(--bg2)) !important;
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+#meetingProposalPage::before,
+#meetingProposalPage::after{
+  content:none !important;
+}
+.meeting-page-header{
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  gap: 12px;
+  padding: calc(14px + env(safe-area-inset-top)) 16px 10px;
+  background: linear-gradient(180deg, rgba(11,12,16,0.96), rgba(11,12,16,0.90));
+}
+.meeting-page-title{
+  font-size: 26px;
+  line-height: 1.05;
+  max-width: 100%;
+}
+.fs-text-btn--back{
+  align-self: flex-start;
+  min-width: 104px;
+  height: 48px;
+  border-radius: 18px;
+}
+.meeting-body{
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.meeting-body--form-only{
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px 16px calc(130px + env(safe-area-inset-bottom));
+}
+.meeting-card--form{
+  min-height: 0;
+  margin: 0;
+  padding: 18px 16px 22px;
+  border-radius: 26px;
+}
+#meetingProposalPage .field-label{
+  display: block;
+  margin-bottom: 8px;
+  font-size: 17px;
+  line-height: 1.15;
+}
+#meetingProposalPage .text-input,
+#meetingProposalPage select.text-input,
+#meetingProposalPage textarea.text-input{
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 58px;
+  padding: 0 16px;
+  text-align: left;
+  line-height: normal;
+}
+#meetingProposalPage input[type="date"],
+#meetingProposalPage input[type="time"]{
+  text-align: left;
+  line-height: normal;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+#meetingProposalPage .field-row{
+  display: grid;
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+  gap: 12px;
+  align-items: start;
+}
+#meetingProposalPage .field-row .field{
+  min-width: 0;
+}
+#meetingProposalPage .text-area-input{
+  min-height: 132px;
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+.meeting-submit-wrap{
+  position: static;
+  margin-top: 18px;
+}
+#freeWindowCreateBtn{
+  width: 100%;
+  min-height: 58px;
+}
+@media (max-width: 420px){
+  .meeting-page-header{
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+  .meeting-page-title{
+    font-size: 24px;
+  }
+  .meeting-body--form-only{
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+  .meeting-card--form{
+    padding: 16px 14px 20px;
+  }
+}
+
+/* ===== Round 10 proposal polish ===== */
+.sheet-backdrop{
+  background: rgba(8,9,12,0.12);
+}
+
+#meetingProposalPage{
+  background: linear-gradient(180deg, var(--bg), var(--bg2)) !important;
+}
+#meetingProposalPage .meeting-card--form{
+  border-radius: 28px;
+}
+#meetingProposalPage .field,
+#meetingProposalPage .field-row .field{
+  min-width: 0;
+}
+#meetingProposalPage .text-input,
+#meetingProposalPage select.text-input,
+#meetingProposalPage textarea.text-input,
+#meetingProposalPage input[type="date"],
+#meetingProposalPage input[type="time"]{
+  box-sizing: border-box;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: left;
+  padding-left: 16px;
+  padding-right: 16px;
+  line-height: 1.2;
+}
+#meetingProposalPage input[type="date"]::-webkit-date-and-time-value,
+#meetingProposalPage input[type="time"]::-webkit-date-and-time-value{
+  text-align: left;
+}
+#meetingProposalPage input[type="date"]::-webkit-datetime-edit,
+#meetingProposalPage input[type="time"]::-webkit-datetime-edit{
+  padding: 0;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+}
+#meetingProposalPage input[type="date"]::-webkit-calendar-picker-indicator,
+#meetingProposalPage input[type="time"]::-webkit-calendar-picker-indicator{
+  opacity: .75;
+}
+#meetingProposalPage .text-area-input{
+  align-items: flex-start;
+  padding-top: 16px;
+}
+
+.windows-card .upcoming-title{
+  margin-bottom: 12px;
+}
+.proposal-compact-card{
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.045);
+  padding: 14px;
+}
+.proposal-compact-head{
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+.proposal-compact-title{
+  font-size: 21px;
+  line-height: 1.08;
+  font-weight: 950;
+  color: rgba(250,241,220,0.98);
+}
+.proposal-compact-time{
+  margin-top: 6px;
+  font-size: 14px;
+  line-height: 1.35;
+  color: rgba(255,255,255,0.72);
+}
+.proposal-status-pill{
+  flex: 0 0 auto;
+  min-width: 74px;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(232,196,90,0.12);
+  border: 1px solid rgba(232,196,90,0.24);
+  color: rgba(250,241,220,0.96);
+  font-size: 13px;
+  font-weight: 900;
+}
+.proposal-compact-desc{
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: rgba(255,255,255,0.86);
+}
+.proposal-compact-summary{
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.proposal-summary-chip{
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.04);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 850;
+  color: rgba(255,255,255,0.82);
+}
+.proposal-summary-chip--yes{
+  border-color: rgba(69,208,126,0.24);
+  background: rgba(69,208,126,0.10);
+  color: rgba(220,255,231,0.95);
+}
+.proposal-summary-chip--no{
+  border-color: rgba(216,85,85,0.22);
+  background: rgba(216,85,85,0.10);
+  color: rgba(255,224,224,0.95);
+}
+.proposal-summary-chip--pending{
+  border-color: rgba(255,255,255,0.12);
+}
+.proposal-member-row{
+  margin-top: 14px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.proposal-member-pill{
+  min-height: 38px;
+  padding: 0 12px 0 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.05);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.proposal-member-pill--yes{
+  border-color: rgba(69,208,126,0.24);
+  background: rgba(69,208,126,0.10);
+}
+.proposal-member-pill--no{
+  border-color: rgba(216,85,85,0.22);
+  background: rgba(216,85,85,0.10);
+}
+.proposal-member-pill--pending{
+  opacity: .9;
+}
+.proposal-avatar{
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.10);
+  color: rgba(250,241,220,0.96);
+  font-size: 12px;
+  font-weight: 950;
+}
+.proposal-member-name{
+  font-size: 13px;
+  font-weight: 850;
+  color: rgba(250,241,220,0.96);
+}
+.proposal-member-state{
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(255,255,255,0.74);
+}
+.proposal-actions-row{
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 10px;
+}
+.proposal-vote-btn{
+  min-height: 46px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.04);
+  color: rgba(250,241,220,0.96);
+  font-size: 14px;
+  font-weight: 900;
+}
+.proposal-vote-btn--yes.is-active{
+  border-color: rgba(69,208,126,0.28);
+  background: rgba(69,208,126,0.14);
+}
+.proposal-vote-btn--maybe.is-active{
+  border-color: rgba(232,196,90,0.28);
+  background: rgba(232,196,90,0.14);
+}
+.proposal-vote-btn--no.is-active{
+  border-color: rgba(216,85,85,0.28);
+  background: rgba(216,85,85,0.14);
+}
+.proposal-detail-btn{
+  margin-top: 12px;
+  width: 100%;
+}
+
+.day.proposal-day{
+  border-color: rgba(232,196,90,0.32);
+  box-shadow: 0 0 0 1px rgba(232,196,90,0.18) inset;
+}
+.day.proposal-day .day-number{
+  color: rgba(250,241,220,0.98);
+}
+.proposal-day-indicator{
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #e8c45a;
+  box-shadow: 0 0 0 3px rgba(232,196,90,0.16);
+}
+.proposal-day-count{
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(232,196,90,0.14);
+  border: 1px solid rgba(232,196,90,0.28);
+  color: rgba(250,241,220,0.98);
+  font-size: 11px;
+  font-weight: 950;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#proposalDetailsSheet{
+  z-index: 110;
+}
+#proposalDetailsSheet .sheet-body{
+  max-height: calc(100dvh - 180px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: calc(22px + env(safe-area-inset-bottom));
+}
+.proposal-details-list{
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (max-width: 420px){
+  .proposal-actions-row{
+    grid-template-columns: 1fr;
+  }
+  .proposal-compact-title{
+    font-size: 19px;
+  }
+}
+
+
+/* ===== Round 11 proposals UX cleanup ===== */
+.sheet-backdrop{
+  background:
+    radial-gradient(900px 600px at 20% 0%, rgba(255,255,255,0.025), transparent 55%),
+    radial-gradient(800px 600px at 90% 25%, rgba(232,196,90,0.03), transparent 58%),
+    rgba(8,9,12,0.08);
+}
+
+#friendsWindowsCard{
+  max-height:none;
+  overflow:visible;
+}
+
+.proposal-launcher{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:16px;
+  border-radius:20px;
+  border:1px solid rgba(255,255,255,0.10);
+  background:rgba(255,255,255,0.045);
+  color:var(--text);
+  text-align:left;
+}
+.proposal-launcher-main{min-width:0;}
+.proposal-launcher-title{
+  font-size:18px;
+  font-weight:950;
+  color:rgba(250,241,220,0.98);
+}
+.proposal-launcher-sub{
+  margin-top:6px;
+  font-size:13px;
+  line-height:1.4;
+  color:rgba(255,255,255,0.72);
+}
+.proposal-launcher-badge{
+  flex:0 0 auto;
+  min-width:64px;
+  height:40px;
+  padding:0 14px;
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border:1px solid rgba(232,196,90,0.24);
+  background:rgba(232,196,90,0.10);
+  color:rgba(250,241,220,0.95);
+  font-size:13px;
+  font-weight:900;
+}
+
+.proposal-event-card{
+  padding:14px;
+  border-radius:20px;
+  border:1px solid rgba(255,255,255,0.10);
+  background:rgba(255,255,255,0.045);
+}
+.proposal-event-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+}
+.proposal-event-title{
+  font-size:18px;
+  font-weight:950;
+  color:rgba(250,241,220,0.98);
+}
+.proposal-event-time{
+  margin-top:6px;
+  font-size:14px;
+  line-height:1.35;
+  color:rgba(255,255,255,0.72);
+}
+.proposal-event-pill{
+  flex:0 0 auto;
+  min-width:70px;
+  height:38px;
+  padding:0 12px;
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border:1px solid rgba(255,255,255,0.10);
+  background:rgba(255,255,255,0.05);
+  color:rgba(250,241,220,0.92);
+  font-size:12px;
+  font-weight:900;
+}
+.proposal-event-pill--default{
+  border-color:rgba(255,255,255,0.12);
+  background:rgba(255,255,255,0.04);
+}
+.proposal-section-label{
+  font-size:13px;
+  font-weight:900;
+  letter-spacing:.3px;
+  color:rgba(255,255,255,0.58);
+  text-transform:uppercase;
+  margin:4px 2px 0;
+}
+
+.day.proposal-day{
+  border-color: rgba(232,196,90,0.24);
+  box-shadow: 0 0 0 1px rgba(232,196,90,0.12) inset;
+}
+.day.proposal-day .day-number{
+  color: rgba(250,241,220,0.98);
+}
+.proposal-day-indicator{
+  position:absolute;
+  top:8px;
+  right:8px;
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  background:#e8c45a;
+  box-shadow:0 0 0 3px rgba(232,196,90,0.14);
+}
+.proposal-day-count{
+  display:none !important;
+}
+
+#proposalDetailsSheet .sheet-body{
+  max-height: calc(100dvh - 168px);
+}
+
+@media (max-width:420px){
+  .proposal-launcher{padding:14px;}
+  .proposal-launcher-title{font-size:17px;}
+  .proposal-launcher-badge{min-width:58px;}
+}
+
+
+.proposal-avatar{overflow:hidden; display:inline-flex; align-items:center; justify-content:center;}
+.proposal-avatar img{width:100%; height:100%; object-fit:cover; border-radius:999px; display:block;}
+.proposal-owner-actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;}
+.proposal-detail-btn{border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.06); color:var(--text); border-radius:999px; padding:11px 16px; font-size:15px; font-weight:700;}
+.proposal-detail-btn--danger{border-color:rgba(255,77,77,.35); color:#ffd2d2; background:rgba(255,77,77,.10);}
+.day.proposal-day{position:relative;}
+.proposal-day-badge{position:absolute; left:50%; bottom:8px; transform:translateX(-50%); min-width:22px; height:16px; padding:0 6px; border-radius:999px; background:rgba(232,196,90,.18); border:1px solid rgba(232,196,90,.45); color:#f7e6ad; font-size:10px; line-height:14px; font-weight:800; display:flex; align-items:center; justify-content:center; pointer-events:none;}
+.proposal-day-indicator,.proposal-day-count{display:none !important;}
+#proposalDetailsSheet .sheet-body{padding-bottom:calc(28px + env(safe-area-inset-bottom));}
+#proposalDetailsSheet .proposal-details-list{display:flex; flex-direction:column; gap:14px;}
+.proposal-compact-card,.proposal-event-card{box-shadow:none;}
+
+
+/* ===== Round 12 proposal notification badges ===== */
+#meetingProposalPage .text-area-input{
+  display:block !important;
+  min-height:96px;
+  padding-top:20px !important;
+  padding-bottom:20px !important;
+  line-height:1.35;
+}
+#meetingDescription{
+  text-align:left;
+}
+#meetingDescription::placeholder{
+  line-height:1.35;
+}
+.tab{ position:relative; }
+.tab-notice-dot{
+  position:absolute;
+  top:10px;
+  right:28px;
+  width:10px;
+  height:10px;
+  border-radius:999px;
+  background:#ff4d4d;
+  box-shadow:0 0 0 3px rgba(255,77,77,0.16);
+}
+.proposal-launcher{ position:relative; }
+.proposal-launcher-dot{
+  position:absolute;
+  top:10px;
+  right:10px;
+  width:11px;
+  height:11px;
+  border-radius:999px;
+  background:#ff4d4d;
+  box-shadow:0 0 0 3px rgba(255,77,77,0.16);
+}
+.proposal-launcher.has-unread{
+  border-color:rgba(255,77,77,0.22);
+}
+.proposal-launcher-badge.is-muted{
+  opacity:.55;
+}
+
+
+/* ===== Round 13 notifications + placeholder polish ===== */
+#meetingDescription{
+  min-height: 96px;
+  padding-top: 14px !important;
+  padding-bottom: 14px !important;
+  line-height: 1.32;
+}
+#meetingDescription::placeholder{
+  color: rgba(250,241,220,0.34);
+  line-height: 1.32;
+}
+.notifications-feed-list{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.notification-item{
+  width:100%;
+  border:none;
+  background:rgba(255,255,255,0.03);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:22px;
+  padding:14px 16px;
+  text-align:left;
+  color:#f8f1de;
+}
+.notification-item.is-unread{
+  border-color:rgba(232,196,90,0.34);
+  box-shadow:0 0 0 1px rgba(232,196,90,0.08) inset;
+}
+.notification-item-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.notification-item-title{
+  font-size:17px;
+  font-weight:850;
+  line-height:1.2;
+}
+.notification-item-dot{
+  width:10px;
+  height:10px;
+  border-radius:999px;
+  background:#ff4d4f;
+  flex:0 0 auto;
+}
+.notification-item-body{
+  margin-top:8px;
+  font-size:15px;
+  line-height:1.35;
+  color:rgba(248,241,222,0.92);
+}
+.notification-item-meta{
+  margin-top:6px;
+  font-size:13px;
+  line-height:1.35;
+  color:rgba(248,241,222,0.58);
+}
+#notificationsBtn{ position:relative; }
+.tab-notice-dot--profile{
+  top:16px;
+  right:18px;
+}
+.proposal-launcher-badge.is-muted{ opacity:1; }

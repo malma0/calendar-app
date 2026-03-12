@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="css/style.css?v=5008" />
+  <link rel="stylesheet" href="css/style.css?v=5033" />
 <title>Calendar App</title>
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -27,6 +27,7 @@
           <div class="hero-title" id="groupCardTitle">Группа</div>
           <div class="hero-sub" id="groupCardSub"></div>
         </div>
+
         <div class="card list">
           <button class="list-row" id="inviteBtn">
             <span class="row-ico">🔗</span>
@@ -39,6 +40,13 @@
             <span class="row-arrow">›</span>
           </button>
         </div>
+        <div class="card windows-card" id="friendsWindowsCard">
+          <div class="upcoming-title">Предложения группы</div>
+          <div class="windows-list" id="friendsWindowsList">
+            <div class="color-hint">Выберите группу, чтобы увидеть ближайшие встречи и свободные слоты.</div>
+          </div>
+        </div>
+
 
       </section>
 
@@ -68,7 +76,7 @@
           <span class="chip-sep" aria-hidden="true">|</span>
           <button class="chip" id="chipWeek" type="button">Неделя</button>
           <span class="chip-sep" aria-hidden="true">|</span>
-          <button class="chip" id="chipFindWindow" type="button">Найти окно</button>
+          <button class="chip" id="chipFindWindow" type="button">Сбор группы</button>
         </div>
 
         <div class="calendar">
@@ -266,9 +274,9 @@
         <button class="primary-btn" id="saveGroupNameBtn">Сохранить название</button>
       </div>
 
-      <div class="sheet-section">
-        <button class="mini-btn" id="leaveGroupBtn" type="button">Выйти из группы</button>
-        <button class="danger-btn" id="deleteGroupBtn" type="button" style="margin-top:10px;" hidden>Удалить группу</button>
+      <div class="sheet-section group-danger-actions" id="groupDangerActions">
+        <button class="danger-btn danger-btn-half" id="leaveGroupBtn" type="button">Выйти из группы</button>
+        <button class="danger-btn danger-btn-half" id="deleteGroupBtn" type="button" hidden>Удалить группу</button>
       </div>
 
     </div>
@@ -319,33 +327,59 @@
       </div>
 </div>
 
-    <!-- Find common free window sheet -->
-    <div class="sheet" id="freeWindowSheet" aria-hidden="true">
-      <div class="sheet-handle"></div>
-      <div class="sheet-header">
-        <div class="sheet-title">Найти общее окно</div>
-        <button class="sheet-close" id="closeFreeWindow" type="button" aria-label="Закрыть">×</button>
-      </div>
-      <div class="sheet-body">
-        <div class="sheet-section">
-          <div class="section-title">Выберите группу</div>
-          <div class="groups-list" id="freeWindowGroups"></div>
-        </div>
+    <!-- Meeting proposal full screen -->
+    <div class="fullscreen" id="meetingProposalPage" hidden>
+      <header class="meeting-page-header">
+        <button class="fs-text-btn fs-text-btn--back" id="closeFreeWindow" type="button" aria-label="Назад">Назад</button>
+        <div class="meeting-page-title">Предложить встречу</div>
+      </header>
 
-        <div class="sheet-section" id="freeWindowResultWrap" hidden>
-          <div class="section-title">Результат</div>
-          <div class="color-hint" id="freeWindowResult"></div>
-          <button class="primary-btn" id="freeWindowCreateBtn" type="button">Создать событие</button>
-        </div>
-      </div>
+      <div class="fs-body meeting-body meeting-body--form-only">
+        <div class="card meeting-card meeting-card--form">
+          <label class="field-label" for="meetingGroupSelect">Группа</label>
+          <select class="text-input" id="meetingGroupSelect"></select>
 
-      <div class="sheet-footer">
-        <button class="primary-btn" id="freeWindowDoneBtn" type="button">Готово</button>
+          <label class="field-label" for="meetingTitle" style="margin-top:14px;">Название</label>
+          <input class="text-input" id="meetingTitle" placeholder="Например: Сбор группы" />
+
+          <label class="field-label" for="meetingDate" style="margin-top:14px;">Дата</label>
+          <input class="text-input" id="meetingDate" type="date" />
+
+          <div class="field-row" style="margin-top:14px;">
+            <div class="field">
+              <label class="field-label" for="meetingTimeStart">Начало</label>
+              <input class="text-input" id="meetingTimeStart" type="time" />
+            </div>
+            <div class="field">
+              <label class="field-label" for="meetingTimeEnd">Конец</label>
+              <input class="text-input" id="meetingTimeEnd" type="time" />
+            </div>
+          </div>
+
+          <label class="field-label" for="meetingDescription" style="margin-top:14px;">Описание</label>
+          <textarea class="text-input text-area-input" id="meetingDescription" placeholder="Например: обсудим планы"></textarea>
+
+          <div class="meeting-submit-wrap">
+            <button class="primary-btn" id="freeWindowCreateBtn" type="button">Сохранить</button>
+          </div>
+        </div>
       </div>
     </div>
 
 
-    
+    <!-- Proposal details sheet -->
+    <div class="sheet" id="proposalDetailsSheet" hidden>
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title" id="proposalDetailsTitle">Предложение встречи</div>
+        <button class="sheet-close" id="closeProposalDetails" type="button" aria-label="Закрыть">×</button>
+      </div>
+      <div class="sheet-body">
+        <div class="proposal-details-list" id="proposalDetailsList"></div>
+      </div>
+    </div>
+
+
     <!-- Notifications Sheet -->
     <div class="sheet" id="notificationsSheet" hidden>
       <div class="sheet-handle"></div>
@@ -394,6 +428,16 @@
               </div>
               <label class="switch">
                 <input type="checkbox" id="notifFreeSlot">
+                <span class="slider"></span>
+              </label>
+            </div>
+
+            <div class="toggle-row">
+              <div class="toggle-text">
+                <div class="toggle-title">Уведомления о сборах группы</div>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="notifGroupProposals">
                 <span class="slider"></span>
               </label>
             </div>
@@ -583,18 +627,39 @@
 		</div>
 	  </div>
 
-	<script src="js/app.js?v=5014"></script>
-	<script type="module" src="./js/auth-ui.js?v=5014"></script>
+	<script src="js/app.js?v=5034"></script>
+	<script type="module" src="./js/auth-ui.js?v=5034"></script>
 
 	  <script type="module">
-	    import { initFriends } from "./js/friends.js?v=5014";
+	    import { initFriends } from "./js/friends.js?v=5034";
 	    window.addEventListener("auth:ready", () => initFriends(), { once: true });
 	</script>
 
 	  <script type="module">
-	    import { initProfile } from "./js/profile.js?v=5014";
+	    import { initProfile } from "./js/profile.js?v=5034";
 	    window.addEventListener("auth:ready", () => initProfile(), { once: true });
 	  </script>
 
+
+	<script type="module">
+	  import { initFindWindow } from "./js/find-window.js?v=5034";
+	  window.addEventListener("auth:ready", () => initFindWindow(), { once: true });
+	</script>
+
+
+	<script type="module">
+	  import { initProposalCalendar } from "./js/proposal-calendar.js?v=5034";
+	  window.addEventListener("auth:ready", () => initProposalCalendar(), { once: true });
+	</script>
+
+	<script type="module">
+	  import { initProposalDetails } from "./js/proposal-details.js?v=5034";
+	  window.addEventListener("auth:ready", () => initProposalDetails(), { once: true });
+	</script>
+
+	<script type="module">
+	  import { initProposalNotifications } from "./js/proposal-notifications.js?v=5034";
+	  window.addEventListener("auth:ready", () => initProposalNotifications(), { once: true });
+	</script>
 </body>
 </html>

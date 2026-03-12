@@ -9,7 +9,7 @@ import {
   updateGroupColor,
   leaveGroup,
   deleteGroup,
-} from "./api.js?v=5014";
+} from "./api.js?v=5033";
 
 const ACTIVE_GROUP_ID_KEY = "active_group_id";
 
@@ -21,6 +21,39 @@ let state = {
 };
 
 function $(id){ return document.getElementById(id); }
+
+function getToken(){
+  const exactKeys = ["access_token","token","auth_token","jwt","bearer_token","opentime_token"];
+  for (const key of exactKeys){
+    const value = localStorage.getItem(key) || sessionStorage.getItem(key);
+    if (value) return value.replace(/^Bearer\s+/i, "").trim();
+  }
+  return "";
+}
+
+function getApiBase(){
+  const saved = localStorage.getItem("api_base_url") || sessionStorage.getItem("api_base_url") || "";
+  if (saved) return saved.replace(/\/$/, "");
+  const { protocol, hostname, port } = window.location;
+  if (port === "5500") return `${protocol}//${hostname}:8080`;
+  return "";
+}
+
+async function rawApi(path){
+  const token = getToken();
+  const res = await fetch(`${getApiBase()}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  if (!res.ok) throw new Error("Ошибка запроса");
+  return res.json();
+}
+
+function pad(value){ return String(value).padStart(2, "0"); }
+
+function formatShort(dateStr, timeStr){
+  const [y,m,d] = String(dateStr).split("-").map(Number);
+  const [hh,mm] = String(timeStr || "00:00").slice(0,5).split(":").map(Number);
+  const date = new Date(y, (m||1)-1, d||1, hh||0, mm||0);
+  return `${pad(date.getDate())}.${pad(date.getMonth()+1)} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
 
 function escapeHtml(s){
   return String(s ?? "")
@@ -47,6 +80,7 @@ function setActiveGroup(group){
   renderGroupCard();
   renderGroupSheet();
   renderGroupsSheet();
+  renderMeetingProposalsBlock();
   document.dispatchEvent(new CustomEvent("group:changed", { detail: state.activeGroup }));
 }
 
@@ -96,20 +130,23 @@ function renderGroupSheet(){
   const renameWrap = $("renameWrap");
   const deleteBtn = $("deleteGroupBtn");
   const leaveBtn = $("leaveGroupBtn");
+  const actionsRow = $("groupDangerActions");
 
   if(!g){
     if(title) title.textContent = "Группа";
     if(renameWrap) renameWrap.hidden = true;
     if(deleteBtn) deleteBtn.hidden = true;
     if(leaveBtn) leaveBtn.hidden = true;
+    if(actionsRow) actionsRow.hidden = true;
     return;
   }
 
   if(title) title.textContent = `Группа “${g.name}”`;
   const isOwner = !!(state.me && g.owner_id === state.me.id);
   if(renameWrap) renameWrap.hidden = !isOwner;
+  if(actionsRow) actionsRow.hidden = false;
   if(deleteBtn) deleteBtn.hidden = !isOwner;
-  if(leaveBtn) leaveBtn.hidden = isOwner;
+  if(leaveBtn) leaveBtn.hidden = false;
   if($("groupNameInput")) $("groupNameInput").value = g.name || "";
   if($("myColorInput")) $("myColorInput").value = g.member_color || "#007AFF";
 }
@@ -140,10 +177,84 @@ function renderGroupsSheet(){
       setActiveGroup(g);
       closeAllSheets();
       await loadMembers();
+      await renderMeetingProposalsBlock();
     });
     list.appendChild(item);
   });
 }
+
+function initials(name){
+  return String(name || '?').trim().split(/\s+/).slice(0,2).map(s => s[0] || '').join('').toUpperCase() || '?';
+}
+
+function voteLabel(vote){
+  if (vote === 'yes') return 'может';
+  if (vote === 'no') return 'не может';
+  if (vote === 'maybe') return 'под вопросом';
+  return 'ждём';
+}
+
+async function submitProposalVote(proposalId, vote){
+  await fetch(`${getApiBase()}/api/meeting-proposals/${proposalId}/vote`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {})
+    },
+    body: JSON.stringify({ vote })
+  }).then(async res => {
+    if (!res.ok){
+      let msg = 'Не удалось сохранить голос';
+      try{ const data = await res.json(); msg = data.detail || msg; }catch{}
+      throw new Error(msg);
+    }
+    return res.json();
+  });
+}
+
+async function renderMeetingProposalsBlock(){
+  const wrap = $("friendsWindowsList");
+  if (!wrap) return;
+  if (!state.activeGroup){
+    wrap.innerHTML = '<div class="color-hint">Выберите группу, чтобы увидеть предложенные встречи.</div>';
+    return;
+  }
+
+  try{
+    const proposals = await rawApi(`/api/groups/${state.activeGroup.id}/meeting-proposals?limit=20`);
+    if (!proposals || !proposals.length){
+      wrap.innerHTML = `
+        <button class="proposal-launcher" type="button" id="openGroupProposalsBtn">
+          <div class="proposal-launcher-main">
+            <div class="proposal-launcher-title">Предложения группы</div>
+            <div class="proposal-launcher-sub">Пока нет предложенных встреч. Нажмите, чтобы открыть список группы.</div>
+          </div>
+          <div class="proposal-launcher-badge" id="openGroupProposalsBadge">0</div>
+          <span class="proposal-launcher-dot" id="openGroupProposalsDot" hidden></span>
+        </button>
+      `;
+    }else{
+      const next = proposals[0];
+      wrap.innerHTML = `
+        <button class="proposal-launcher" type="button" id="openGroupProposalsBtn">
+          <div class="proposal-launcher-main">
+            <div class="proposal-launcher-title">Предложения группы</div>
+            <div class="proposal-launcher-sub">Ближайшее: ${escapeHtml(next.date)} · ${escapeHtml(next.start_time)}–${escapeHtml(next.end_time)}. Нажмите, чтобы открыть все предложения и проголосовать.</div>
+          </div>
+          <div class="proposal-launcher-badge" id="openGroupProposalsBadge">${proposals.length}</div>
+          <span class="proposal-launcher-dot" id="openGroupProposalsDot" hidden></span>
+        </button>
+      `;
+    }
+    document.dispatchEvent(new CustomEvent('proposal:launcher-rendered', { detail: { groupId: state.activeGroup.id, groupName: state.activeGroup.name, total: proposals.length } }));
+    $("openGroupProposalsBtn")?.addEventListener('click', () => {
+      document.dispatchEvent(new CustomEvent('proposal:list-group', { detail: { groupId: state.activeGroup.id, groupName: state.activeGroup.name } }));
+    });
+  }catch(err){
+    wrap.innerHTML = '<div class="color-hint">Не удалось загрузить предложения встречи.</div>';
+  }
+}
+
 
 async function loadMembers(){
   if(!state.activeGroup){ state.members = []; renderMembers(); return; }
@@ -171,6 +282,7 @@ async function processInviteFromUrl(){
     await refreshGroups();
     setActiveGroup(state.groups.find(g => g.id === group.id) || group);
     await loadMembers();
+    await renderMeetingProposalsBlock();
     const url = new URL(location.href);
     url.searchParams.delete("invite");
     history.replaceState({}, "", url.toString());
@@ -239,6 +351,7 @@ function bindUI(){
       await refreshGroups();
       setActiveGroup(state.groups.find(x => x.id === g.id) || g);
       await loadMembers();
+      await renderMeetingProposalsBlock();
       closeAllSheets();
     }catch(err){
       alert(err?.message || "Не удалось создать группу");
@@ -253,6 +366,7 @@ function bindUI(){
       const updated = await renameGroup(state.activeGroup.id, name);
       state.groups = state.groups.map(g => g.id === updated.id ? { ...g, ...updated, member_color: g.member_color } : g);
       setActiveGroup(state.groups.find(g => g.id === updated.id));
+      await renderMeetingProposalsBlock();
     }catch(err){
       alert(err?.message || "Не удалось сохранить название");
     }
@@ -269,12 +383,13 @@ function bindUI(){
     if(!state.activeGroup) return;
     const color = $("myColorInput")?.value || "#007AFF";
     try{
-      const updated = await updateGroupColor(state.activeGroup.id, color);
+      await updateGroupColor(state.activeGroup.id, color);
       state.activeGroup = { ...state.activeGroup, member_color: color };
       state.groups = state.groups.map(g => g.id === state.activeGroup.id ? { ...g, member_color: color } : g);
       renderGroupSheet();
       renderGroupsSheet();
       await loadMembers();
+      await renderMeetingProposalsBlock();
       document.dispatchEvent(new CustomEvent("group:color-updated", { detail: { groupId: state.activeGroup.id, color } }));
     }catch(err){
       alert(err?.message || "Не удалось сохранить цвет");
@@ -283,12 +398,13 @@ function bindUI(){
 
   $("leaveGroupBtn")?.addEventListener("click", async () => {
     if(!state.activeGroup) return;
-    const ok = window.confirm("Выйти из группы?");
+    const ok = window.confirm(state.me && state.activeGroup && state.activeGroup.owner_id === state.me.id ? "Выйти из группы? Если участники останутся, права админа перейдут одному из них." : "Выйти из группы?");
     if(!ok) return;
     try{
       await leaveGroup(state.activeGroup.id);
       await refreshGroups();
       await loadMembers();
+      await renderMeetingProposalsBlock();
       closeAllSheets();
     }catch(err){
       alert(err?.message || "Не удалось выйти из группы");
@@ -303,6 +419,7 @@ function bindUI(){
       await deleteGroup(state.activeGroup.id);
       await refreshGroups();
       await loadMembers();
+      await renderMeetingProposalsBlock();
       closeAllSheets();
     }catch(err){
       alert(err?.message || "Не удалось удалить группу");
@@ -313,6 +430,11 @@ function bindUI(){
     if(e?.detail?.me) state.me = e.detail.me;
     await loadMembers();
     renderGroupSheet();
+    await renderMeetingProposalsBlock();
+  });
+
+  document.addEventListener("meeting:created", async () => {
+    await renderMeetingProposalsBlock();
   });
 }
 
@@ -328,6 +450,7 @@ export async function initFriends(){
     renderGroupCard();
     renderGroupSheet();
     renderGroupsSheet();
+    await renderMeetingProposalsBlock();
     await processInviteFromUrl();
   }catch(err){
     console.warn("initFriends", err);
