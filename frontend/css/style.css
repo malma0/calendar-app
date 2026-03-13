@@ -785,8 +785,8 @@ body.theme-light{
   --muted: rgba(0,0,0,0.55);
 
   /* In light theme the accent must be deeper to stay visible on white */
-  --gold: #c89200;
-  --gold2:#7a5200;
+  --gold: #67d8c0;
+  --gold2:#2ba48b;
 
   --shadow: 0 18px 70px rgba(0,0,0,0.18);
   --shadow2: 0 10px 30px rgba(0,0,0,0.12);
@@ -804,14 +804,14 @@ body.theme-light .day{
 body.theme-light .day::after{ opacity: .25; }
 body.theme-light .day.other-month{ opacity: .28; }
 body.theme-light .day.today{
-  border-color: rgba(232,196,90,0.55);
-  background: linear-gradient(180deg, rgba(232,196,90,0.22), rgba(0,0,0,0.02));
+  border-color: rgba(43,164,139,0.42);
+  background: linear-gradient(180deg, rgba(103,216,192,0.20), rgba(0,0,0,0.02));
 }
 
 body.theme-light .chip{
-  border-color: rgba(200,146,0,0.45);
-  background: rgba(200,146,0,0.18);
-  color: rgba(30,20,6,0.95);
+  border-color: rgba(43,164,139,0.38);
+  background: rgba(103,216,192,0.18);
+  color: #0f4f43;
 }
 body.theme-light .chip-ghost{
   background: rgba(0,0,0,0.04);
@@ -821,9 +821,9 @@ body.theme-light .chip-ghost{
 /* Chips row separators in light theme */
 body.theme-light .chip-sep{ color: rgba(0,0,0,0.25); }
 body.theme-light .chip.is-active{
-  border-color: rgba(200,146,0,0.55);
-  background: rgba(200,146,0,0.22);
-  color: rgba(30,20,6,0.98);
+  border-color: rgba(43,164,139,0.44);
+  background: rgba(103,216,192,0.22);
+  color: #0f4f43;
 }
 
 /* Tabbar must switch to light theme too (was staying black) */
@@ -834,7 +834,7 @@ body.theme-light .tabbar{
 }
 body.theme-light .tab{ color: rgba(0,0,0,0.55); }
 body.theme-light .tab.active{ color: rgba(0,0,0,0.92); }
-body.theme-light .tab.active .tab-ico{ filter: drop-shadow(0 10px 20px rgba(200,146,0,0.18)); }
+body.theme-light .tab.active .tab-ico{ filter: drop-shadow(0 10px 20px rgba(103,216,192,0.18)); }
 
 /* Buttons inside light sheets ("Создать" was washed out) */
 body.theme-light .primary-btn{
@@ -2805,3 +2805,183 @@ button,
   right:18px;
 }
 .proposal-launcher-badge.is-muted{ opacity:1; }
+
+
+/* ===== Exact mint + readable text fix for light theme ===== */
+body.theme-light .pill-btn,
+body.theme-light .primary-btn,
+body.theme-light .chip,
+body.theme-light .chip.is-active,
+body.theme-light .seg-btn.active,
+body.theme-light .window-item-badge,
+body.theme-light .proposal-status-pill,
+body.theme-light .proposal-event-pill--default,
+body.theme-light .proposal-detail-btn,
+body.theme-light .icon-mini-btn.is-copied{
+  border-color: rgba(43,164,139,0.38) !important;
+  background: rgba(103,216,192,0.18) !important;
+  color: #0f4f43 !important;
+}
+
+body.theme-light .proposal-compact-card,
+body.theme-light .proposal-event-card,
+body.theme-light .window-item{
+  background: #ffffff !important;
+  border-color: rgba(0,0,0,0.10) !important;
+  color: #111111 !important;
+}
+
+body.theme-light .window-item-title,
+body.theme-light .window-item-sub,
+body.theme-light .proposal-compact-title,
+body.theme-light .proposal-compact-time,
+body.theme-light .proposal-compact-desc,
+body.theme-light .proposal-member-name,
+body.theme-light .proposal-member-state,
+body.theme-light .proposal-summary-chip,
+body.theme-light .proposal-section-label,
+body.theme-light .proposal-avatar{
+  color: #111111 !important;
+}
+
+body.theme-light .window-item-sub,
+body.theme-light .proposal-compact-time,
+body.theme-light .proposal-compact-desc,
+body.theme-light .proposal-member-state{
+  color: rgba(17,17,17,0.66) !important;
+}
+
+body.theme-light .proposal-summary-chip{
+  background: rgba(0,0,0,0.03) !important;
+  border-color: rgba(0,0,0,0.10) !important;
+}
+
+body.theme-light .proposal-summary-chip--yes{
+  background: rgba(103,216,192,0.14) !important;
+  border-color: rgba(43,164,139,0.28) !important;
+  color: #0f4f43 !important;
+}
+body.theme-light .proposal-summary-chip--no{
+  background: rgba(216,85,85,0.10) !important;
+  border-color: rgba(216,85,85,0.22) !important;
+  color: #7d2424 !important;
+}
+body.theme-light .proposal-summary-chip--pending{
+  color: #111111 !important;
+}
+
+body.theme-light .day.today,
+body.theme-light .day.selected{
+  border-color: rgba(43,164,139,0.42) !important;
+  background: linear-gradient(180deg, rgba(103,216,192,0.20), rgba(0,0,0,0.02)) !important;
+}
+
+body.theme-light .proposal-compact-card .title,
+body.theme-light .proposals-card,
+body.theme-light .proposals-card *{
+  color: #111111 !important;
+}
+
+
+
+/* ===== FINAL HARD OVERRIDE FOR LIGHT THEME (mint + readable text) ===== */
+body.theme-light .pill-btn,
+body.theme-light .mini-btn,
+body.theme-light .chip,
+body.theme-light .chip.is-active,
+body.theme-light .hero-badge,
+body.theme-light .window-item-badge,
+body.theme-light .proposal-status-pill,
+body.theme-light .proposal-event-pill--default,
+body.theme-light .proposal-detail-btn,
+body.theme-light .window-item--pick.is-primary,
+body.theme-light .meeting-suggest-item.is-primary,
+body.theme-light .groups-item.is-selected,
+body.theme-light .seg-btn.active,
+body.theme-light .icon-mini-btn.is-copied{
+  background: rgba(103,216,192,0.18) !important;
+  border-color: rgba(43,164,139,0.40) !important;
+  color: #0f4f43 !important;
+}
+
+body.theme-light .day.selected,
+body.theme-light .day.today,
+body.theme-light .day.proposal-day{
+  outline-color: rgba(43,164,139,0.40) !important;
+  border-color: rgba(43,164,139,0.40) !important;
+  background: linear-gradient(180deg, rgba(103,216,192,0.18), rgba(0,0,0,0.02)) !important;
+}
+
+body.theme-light .day.selected .day-number,
+body.theme-light .day.today .day-number,
+body.theme-light .day.proposal-day .day-number{
+  color: #0f4f43 !important;
+}
+
+body.theme-light .proposal-day-indicator,
+body.theme-light .busy-dot.busy-dot--proposal,
+body.theme-light .busy-indicator .busy-dot--proposal{
+  background: #67d8c0 !important;
+  box-shadow: 0 0 0 3px rgba(103,216,192,0.18) !important;
+}
+
+/* Proposal launcher on Friends page */
+body.theme-light .proposal-launcher{
+  background: #ffffff !important;
+  border: 1px solid rgba(0,0,0,0.10) !important;
+  color: #111111 !important;
+}
+
+body.theme-light .proposal-launcher *,
+body.theme-light .proposal-launcher-title,
+body.theme-light .proposal-launcher-sub,
+body.theme-light .proposal-launcher-main{
+  color: #111111 !important;
+}
+
+body.theme-light .proposal-launcher-sub{
+  color: rgba(17,17,17,0.62) !important;
+}
+
+body.theme-light .proposal-launcher-badge{
+  background: rgba(103,216,192,0.18) !important;
+  border-color: rgba(43,164,139,0.40) !important;
+  color: #0f4f43 !important;
+}
+
+/* Calendar header pills */
+body.theme-light .topbar .pill-btn,
+body.theme-light .calendar-head .pill-btn,
+body.theme-light .calendar-filters .pill-btn,
+body.theme-light .calendar-filters .chip,
+body.theme-light .calendar-toolbar .pill-btn{
+  background: rgba(103,216,192,0.18) !important;
+  border-color: rgba(43,164,139,0.40) !important;
+  color: #0f4f43 !important;
+}
+
+/* keep all readable in light cards */
+body.theme-light .proposal-compact-card,
+body.theme-light .proposal-event-card,
+body.theme-light .window-item,
+body.theme-light .group-card,
+body.theme-light .list-card{
+  background: #ffffff !important;
+  border-color: rgba(0,0,0,0.10) !important;
+  color: #111111 !important;
+}
+
+body.theme-light .proposal-compact-card *,
+body.theme-light .proposal-event-card *,
+body.theme-light .window-item *,
+body.theme-light .group-card *,
+body.theme-light .list-card *{
+  color: #111111 !important;
+}
+
+body.theme-light .proposal-compact-time,
+body.theme-light .proposal-compact-desc,
+body.theme-light .proposal-member-state,
+body.theme-light .window-item-sub{
+  color: rgba(17,17,17,0.62) !important;
+}

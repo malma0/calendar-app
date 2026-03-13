@@ -57,11 +57,27 @@ function applyTheme(mode) {
   if (toggle) toggle.checked = isLight;
   localStorage.setItem(LS.theme, isLight ? "light" : "dark");
 }
+
+function syncThemeToggleText() {
+  const toggle = byId("themeToggle");
+  if (!toggle) return;
+  const row = toggle.closest(".list-row, .settings-row, .sheet-row, .row, .option-row, .field-row") || toggle.parentElement;
+  if (!row) return;
+  const candidates = Array.from(row.querySelectorAll("label, span, p, div"));
+  const labelEl = candidates.find(el => {
+    const t = (el.textContent || "").trim();
+    return t && /т[её]мн|светл/i.test(t) && !el.querySelector("input");
+  });
+  if (labelEl) labelEl.textContent = "Светлая тема";
+}
+
 function initThemeUI() {
   const saved = localStorage.getItem(LS.theme) || "dark";
   applyTheme(saved);
+  syncThemeToggleText();
   byId("themeToggle")?.addEventListener("change", (e) => {
     applyTheme(e.target.checked ? "light" : "dark");
+    syncThemeToggleText();
   });
 }
 
