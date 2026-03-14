@@ -3103,3 +3103,542 @@ body.theme-light .day::after{
 body.theme-light .month-grid{
   background: transparent !important;
 }
+/* =========================================================
+   FINAL LIGHT THEME STABILIZER + CONTRAST PASS
+   keeps previous fixes and adds clearer hierarchy
+   ========================================================= */
+
+/* keep week mode fixes */
+body.theme-light .week-back-btn{
+  background: rgba(103,216,192,0.20) !important;
+  border: 1px solid rgba(43,164,139,0.42) !important;
+  color: #0f4f43 !important;
+  box-shadow: 0 8px 20px rgba(103,216,192,0.12) !important;
+}
+body.theme-light .week-day-card{
+  background: #ffffff !important;
+  border: 1px solid rgba(0,0,0,0.10) !important;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.05) !important;
+}
+body.theme-light .week-day-card.is-selected{
+  border-color: rgba(43,164,139,0.40) !important;
+  box-shadow: 0 0 0 1px rgba(103,216,192,0.20) inset, 0 10px 24px rgba(0,0,0,0.05) !important;
+}
+body.theme-light .week-tag{
+  background: rgba(103,216,192,0.14) !important;
+  border-color: rgba(43,164,139,0.30) !important;
+  color: #0f4f43 !important;
+}
+
+/* keep invite copy button mint */
+body.theme-light #copyInviteBtn,
+body.theme-light #copyInviteBtn.icon-mini-btn,
+body.theme-light #copyInviteBtn i,
+body.theme-light #copyInviteBtn svg,
+body.theme-light #copyInviteBtn svg *{
+  color: #67d8c0 !important;
+  stroke: #67d8c0 !important;
+  fill: none !important;
+  border-color: rgba(43,164,139,0.22) !important;
+}
+body.theme-light #copyInviteBtn{
+  background: rgba(103,216,192,0.10) !important;
+}
+
+/* keep profile labels dark */
+body.theme-light #profileEdit .field-label,
+body.theme-light #profileEdit label,
+body.theme-light #page-profile .field-label,
+body.theme-light #page-profile label{
+  color: #111111 !important;
+}
+
+/* global light cards: slightly stronger separation */
+body.theme-light .card,
+body.theme-light .sheet,
+body.theme-light .proposal-card,
+body.theme-light .proposal-event-card,
+body.theme-light .proposal-compact-card,
+body.theme-light .proposal-launcher,
+body.theme-light .week-day-card,
+body.theme-light .busy-item,
+body.theme-light .member-item,
+body.theme-light .groups-item,
+body.theme-light .window-item{
+  background: #ffffff !important;
+  border: 1px solid rgba(0,0,0,0.10) !important;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.055) !important;
+}
+
+/* profile editor gets clearer layers */
+body.theme-light #profileEdit .card{
+  background: #ffffff !important;
+  border: 1px solid rgba(0,0,0,0.10) !important;
+  box-shadow: 0 14px 34px rgba(0,0,0,0.06) !important;
+}
+body.theme-light #profileEdit .text-input,
+body.theme-light #profileEdit input.text-input{
+  background: #f7f7f8 !important;
+  border: 1px solid rgba(0,0,0,0.10) !important;
+  color: #111111 !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.70) !important;
+}
+body.theme-light #profileEdit .text-input::placeholder{
+  color: rgba(17,17,17,0.42) !important;
+}
+body.theme-light #profileEdit .danger-btn{
+  background: rgba(255,77,77,0.10) !important;
+  border-color: rgba(255,77,77,0.26) !important;
+  color: #111111 !important;
+}
+
+/* group sheet: make members / color section less flat */
+body.theme-light #groupSheet .section-title,
+body.theme-light #inviteSheet .field label,
+body.theme-light #groupSheet .field label,
+body.theme-light #groupSheet .color-hint{
+  color: rgba(17,17,17,0.62) !important;
+}
+body.theme-light #groupSheet .member-item{
+  background: linear-gradient(180deg, #ffffff, #fafafa) !important;
+  border: 1px solid rgba(0,0,0,0.10) !important;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.04) !important;
+}
+body.theme-light #groupSheet .member-name,
+body.theme-light #groupSheet .member-sub,
+body.theme-light #groupSheet .sheet-title,
+body.theme-light #groupSheet input,
+body.theme-light #groupSheet #groupNameInput{
+  color: #111111 !important;
+}
+body.theme-light #groupSheet .member-sub{
+  color: rgba(17,17,17,0.58) !important;
+}
+body.theme-light #groupSheet .palette-swatch,
+body.theme-light #groupSheet .color-input{
+  border: 2px solid rgba(255,255,255,0.95) !important;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.08) inset !important;
+}
+body.theme-light #groupSheet #saveMyColorBtn,
+body.theme-light #groupSheet #saveGroupNameBtn,
+body.theme-light #groupSheet .primary-btn{
+  background: rgba(103,216,192,0.18) !important;
+  border-color: rgba(43,164,139,0.40) !important;
+  color: #0f4f43 !important;
+}
+body.theme-light #groupSheet .danger-btn{
+  background: rgba(255,77,77,0.08) !important;
+  border-color: rgba(255,77,77,0.22) !important;
+  color: #111111 !important;
+}
+body.theme-light #groupSheet #groupNameInput,
+body.theme-light #groupSheet #addMemberUsername,
+body.theme-light #inviteSheet #inviteLink{
+  background: #f7f7f8 !important;
+  border: 1px solid rgba(0,0,0,0.10) !important;
+  color: #111111 !important;
+}
+
+/* busy/day sheet: make content and actions stand apart */
+body.theme-light #busySheet .sheet-body{
+  background: #ffffff !important;
+}
+body.theme-light .busy-item{
+  background: #fbfbfb !important;
+  border: 1px solid rgba(0,0,0,0.10) !important;
+}
+body.theme-light .busy-name{ color: #111111 !important; }
+body.theme-light .busy-sub{ color: rgba(17,17,17,0.60) !important; }
+body.theme-light .busy-actions .busy-action{
+  min-width: 38px !important;
+  min-height: 38px !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(0,0,0,0.14) !important;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.04) !important;
+}
+
+/* proposal details: add hierarchy so everything does not merge together */
+body.theme-light #proposalDetailsSheet .sheet-body{
+  background: #ffffff !important;
+}
+body.theme-light #proposalDetailsSheet .proposal-details-list{
+  gap: 16px !important;
+}
+body.theme-light .proposal-event-card,
+body.theme-light .proposal-compact-card{
+  background: linear-gradient(180deg, #ffffff, #fbfbfb) !important;
+  border: 1px solid rgba(0,0,0,0.11) !important;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.05) !important;
+}
+body.theme-light .proposal-event-head,
+body.theme-light .proposal-compact-head{
+  padding-bottom: 10px !important;
+  margin-bottom: 10px !important;
+  border-bottom: 1px solid rgba(0,0,0,0.07) !important;
+}
+body.theme-light .proposal-event-title,
+body.theme-light .proposal-compact-title,
+body.theme-light .proposal-card-title,
+body.theme-light .proposal-member-name{
+  color: #111111 !important;
+}
+body.theme-light .proposal-event-time,
+body.theme-light .proposal-compact-time,
+body.theme-light .proposal-card-sub,
+body.theme-light .proposal-card-desc,
+body.theme-light .proposal-member-state,
+body.theme-light .proposal-section-label{
+  color: rgba(17,17,17,0.60) !important;
+}
+body.theme-light .proposal-event-pill,
+body.theme-light .proposal-status-pill,
+body.theme-light .proposal-summary-chip,
+body.theme-light .proposal-vote-chip,
+body.theme-light .proposal-detail-btn{
+  background: #ffffff !important;
+  border: 1px solid rgba(0,0,0,0.12) !important;
+  color: #111111 !important;
+}
+body.theme-light .proposal-member-pill{
+  background: #ffffff !important;
+  border: 1px solid rgba(0,0,0,0.10) !important;
+}
+body.theme-light .proposal-member-pill--yes,
+body.theme-light .proposal-summary-chip--yes,
+body.theme-light .proposal-vote-chip:not(.proposal-vote-chip--muted){
+  background: rgba(103,216,192,0.12) !important;
+  border-color: rgba(43,164,139,0.30) !important;
+  color: #0f4f43 !important;
+}
+body.theme-light .proposal-member-pill--no,
+body.theme-light .proposal-summary-chip--no{
+  background: rgba(255,77,77,0.08) !important;
+  border-color: rgba(255,77,77,0.22) !important;
+  color: #7a2323 !important;
+}
+body.theme-light .proposal-vote-btn--yes,
+body.theme-light .proposal-detail-btn:not(.proposal-detail-btn--danger),
+body.theme-light .vote-btn:not(.vote-btn--muted){
+  background: rgba(103,216,192,0.18) !important;
+  border-color: rgba(43,164,139,0.38) !important;
+  color: #0f4f43 !important;
+}
+body.theme-light .proposal-vote-btn--no,
+body.theme-light .proposal-detail-btn--danger,
+body.theme-light .vote-btn--muted{
+  background: rgba(255,77,77,0.08) !important;
+  border-color: rgba(255,77,77,0.22) !important;
+  color: #7a2323 !important;
+}
+body.theme-light .proposal-vote-btn--maybe,
+body.theme-light .proposal-summary-chip--pending,
+body.theme-light .proposal-member-pill--pending{
+  background: #ffffff !important;
+  border-color: rgba(0,0,0,0.12) !important;
+  color: #111111 !important;
+}
+
+/* make light tabs and headers less washed out */
+body.theme-light .tabbar{
+  box-shadow: 0 18px 42px rgba(0,0,0,0.09) !important;
+}
+body.theme-light .sheet-handle{
+  background: rgba(0,0,0,0.14) !important;
+}
+
+
+/* =========================================================
+   MICRO-ANIMATIONS PASS
+   ========================================================= */
+
+:root{
+  --ui-fast: .16s;
+  --ui-med: .24s;
+  --ui-slow: .34s;
+  --ui-ease: cubic-bezier(.22,.61,.36,1);
+}
+
+button,
+.icon-btn,
+.icon-mini-btn,
+.sheet-close,
+.primary-btn,
+.danger-btn,
+.week-back-btn,
+.pill-btn,
+.chip,
+.seg-btn,
+.vote-btn,
+.fs-text-btn,
+.mini-btn,
+.groups-item,
+.list-row,
+.busy-action,
+.palette-swatch,
+.tab,
+.sheet,
+.card,
+.week-day-card,
+.proposal-card,
+.proposal-compact-card,
+.proposal-event-card,
+.window-item,
+.member-item,
+.busy-item,
+.group-card,
+.list-card,
+.auth-card,
+.meeting-card,
+.free-window-suggest-wrap{
+  transition:
+    transform var(--ui-med) var(--ui-ease),
+    box-shadow var(--ui-med) var(--ui-ease),
+    background-color var(--ui-med) var(--ui-ease),
+    border-color var(--ui-med) var(--ui-ease),
+    color var(--ui-med) var(--ui-ease),
+    opacity var(--ui-med) var(--ui-ease),
+    filter var(--ui-med) var(--ui-ease);
+}
+
+.topbar,
+.tabbar,
+.page-header,
+.meeting-page-header,
+.sheet-backdrop{
+  transition:
+    background-color var(--ui-med) var(--ui-ease),
+    border-color var(--ui-med) var(--ui-ease),
+    box-shadow var(--ui-med) var(--ui-ease),
+    opacity var(--ui-med) var(--ui-ease),
+    backdrop-filter var(--ui-med) var(--ui-ease);
+}
+
+.field input,
+.text-input,
+textarea,
+select{
+  transition:
+    transform var(--ui-fast) var(--ui-ease),
+    box-shadow var(--ui-fast) var(--ui-ease),
+    border-color var(--ui-fast) var(--ui-ease),
+    background-color var(--ui-fast) var(--ui-ease),
+    color var(--ui-fast) var(--ui-ease);
+}
+
+.field input:focus,
+.text-input:focus,
+textarea:focus,
+select:focus{
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px rgba(0,0,0,0.10);
+}
+
+body.theme-light .field input:focus,
+body.theme-light .text-input:focus,
+body.theme-light textarea:focus,
+body.theme-light select:focus{
+  border-color: rgba(103,216,192,0.46) !important;
+  box-shadow: 0 12px 26px rgba(103,216,192,0.16) !important;
+}
+
+@media (hover:hover){
+  .icon-btn:hover,
+  .icon-mini-btn:hover,
+  .sheet-close:hover,
+  .primary-btn:hover,
+  .danger-btn:hover,
+  .week-back-btn:hover,
+  .pill-btn:hover,
+  .chip:hover,
+  .seg-btn:hover,
+  .vote-btn:hover,
+  .fs-text-btn:hover,
+  .mini-btn:hover,
+  .groups-item:hover,
+  .list-row:hover,
+  .busy-action:hover,
+  .palette-swatch:hover,
+  .proposal-card:hover,
+  .proposal-compact-card:hover,
+  .proposal-event-card:hover,
+  .window-item:hover,
+  .busy-item:hover,
+  .member-item:hover,
+  .week-day-card:hover,
+  .card:hover,
+  .auth-card:hover,
+  .meeting-card:hover,
+  .free-window-suggest-wrap:hover{
+    transform: translateY(-2px);
+  }
+
+  .card:hover,
+  .proposal-card:hover,
+  .proposal-compact-card:hover,
+  .proposal-event-card:hover,
+  .window-item:hover,
+  .busy-item:hover,
+  .member-item:hover,
+  .week-day-card:hover,
+  .auth-card:hover,
+  .meeting-card:hover,
+  .free-window-suggest-wrap:hover{
+    box-shadow: 0 18px 44px rgba(0,0,0,0.14);
+  }
+
+  body.theme-light .card:hover,
+  body.theme-light .proposal-card:hover,
+  body.theme-light .proposal-compact-card:hover,
+  body.theme-light .proposal-event-card:hover,
+  body.theme-light .window-item:hover,
+  body.theme-light .busy-item:hover,
+  body.theme-light .member-item:hover,
+  body.theme-light .week-day-card:hover,
+  body.theme-light .auth-card:hover,
+  body.theme-light .meeting-card:hover,
+  body.theme-light .free-window-suggest-wrap:hover{
+    box-shadow: 0 20px 42px rgba(0,0,0,0.11) !important;
+  }
+}
+
+button:active,
+.icon-btn:active,
+.icon-mini-btn:active,
+.sheet-close:active,
+.primary-btn:active,
+.danger-btn:active,
+.week-back-btn:active,
+.pill-btn:active,
+.chip:active,
+.seg-btn:active,
+.vote-btn:active,
+.fs-text-btn:active,
+.mini-btn:active,
+.groups-item:active,
+.list-row:active,
+.palette-swatch:active{
+  transform: scale(.985);
+}
+
+.tab .tab-ico,
+.tab .tab-label,
+.day,
+.day-number,
+.busy-dot,
+.busy-pill,
+.groups-dot,
+.member-dot,
+.color-preview,
+.window-item-badge,
+.proposal-status-pill,
+.proposal-vote-chip,
+.proposal-summary-chip,
+.badge,
+.hero-badge{
+  transition:
+    transform var(--ui-med) var(--ui-ease),
+    box-shadow var(--ui-med) var(--ui-ease),
+    background-color var(--ui-med) var(--ui-ease),
+    border-color var(--ui-med) var(--ui-ease),
+    color var(--ui-med) var(--ui-ease),
+    opacity var(--ui-med) var(--ui-ease),
+    filter var(--ui-med) var(--ui-ease);
+}
+
+.day:hover{
+  transform: translateY(-1px);
+}
+
+.day.selected,
+.day.today,
+.groups-item.is-selected,
+.vote-btn.is-active,
+.chip.is-active,
+.seg-btn.active,
+.tab.active .tab-ico,
+.icon-mini-btn.is-copied{
+  animation: pulseAccent .42s var(--ui-ease);
+}
+
+.sheet{
+  opacity: 0;
+  filter: saturate(.98);
+}
+.sheet.open{
+  opacity: 1;
+  filter: saturate(1);
+}
+.sheet.open .sheet-header,
+.sheet.open .sheet-body > *,
+.sheet.open .sheet-footer > *{
+  animation: sheetContentRise .30s var(--ui-ease) both;
+}
+.sheet.open .sheet-body > *:nth-child(1){ animation-delay: .02s; }
+.sheet.open .sheet-body > *:nth-child(2){ animation-delay: .04s; }
+.sheet.open .sheet-body > *:nth-child(3){ animation-delay: .06s; }
+.sheet.open .sheet-body > *:nth-child(4){ animation-delay: .08s; }
+.sheet.open .sheet-body > *:nth-child(5){ animation-delay: .10s; }
+.sheet.open .sheet-body > *:nth-child(6){ animation-delay: .12s; }
+.sheet.open .sheet-body > *:nth-child(7){ animation-delay: .14s; }
+.sheet.open .sheet-body > *:nth-child(8){ animation-delay: .16s; }
+
+.fullscreen.open .fs-header,
+.fullscreen.open .fs-body > *,
+.fullscreen.open .fs-form > *,
+.fullscreen.open .meeting-page-header,
+.fullscreen.open .meeting-body--form-only > *{
+  animation: sheetContentRise .30s var(--ui-ease) both;
+}
+
+.page.is-active .card,
+.page.is-active .hero,
+.page.is-active .list-row,
+.page.is-active .groups-item,
+.page.is-active .week-day-card,
+.page.is-active .proposal-card,
+.page.is-active .proposal-compact-card,
+.page.is-active .proposal-event-card,
+.page.is-active .window-item,
+.page.is-active .busy-item{
+  animation: cardFadeIn .26s var(--ui-ease) both;
+}
+
+.page.is-active .card:nth-of-type(2),
+.page.is-active .groups-item:nth-of-type(2),
+.page.is-active .list-row:nth-of-type(2),
+.page.is-active .proposal-card:nth-of-type(2),
+.page.is-active .window-item:nth-of-type(2){ animation-delay:.03s; }
+.page.is-active .card:nth-of-type(3),
+.page.is-active .groups-item:nth-of-type(3),
+.page.is-active .list-row:nth-of-type(3),
+.page.is-active .proposal-card:nth-of-type(3),
+.page.is-active .window-item:nth-of-type(3){ animation-delay:.06s; }
+.page.is-active .card:nth-of-type(4),
+.page.is-active .groups-item:nth-of-type(4),
+.page.is-active .list-row:nth-of-type(4),
+.page.is-active .proposal-card:nth-of-type(4),
+.page.is-active .window-item:nth-of-type(4){ animation-delay:.09s; }
+
+@keyframes cardFadeIn{
+  from{ opacity:0; transform: translateY(8px); }
+  to{ opacity:1; transform: translateY(0); }
+}
+
+@keyframes sheetContentRise{
+  from{ opacity:0; transform: translateY(12px); }
+  to{ opacity:1; transform: translateY(0); }
+}
+
+@keyframes pulseAccent{
+  0%{ transform: scale(.985); }
+  55%{ transform: scale(1.015); }
+  100%{ transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce){
+  *, *::before, *::after{
+    animation: none !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
