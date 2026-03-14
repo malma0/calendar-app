@@ -3642,3 +3642,7 @@ button:active,
     scroll-behavior: auto !important;
   }
 }
+/* скрываем полоску предпросмотра кода сброса пароля */
+.auth-token{
+  display: none !important;
+}
