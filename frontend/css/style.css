@@ -3005,3 +3005,101 @@ body.theme-light .event-card-actions button:hover,
 body.theme-light .icon-btn:hover{
   background:rgba(0,0,0,0.12) !important;
 }
+
+/* ===== FINAL FIX: keep meeting proposal page readable in light theme ===== */
+/* Revert accidental global light-theme icon button override */
+body.theme-light .topbar .icon-btn,
+body.theme-light .meeting-page-header .icon-btn,
+body.theme-light .meeting-page-header .fs-text-btn,
+body.theme-light .meeting-page-header .fs-text-btn--back{
+  background: #ffffff !important;
+  border: 1px solid rgba(0,0,0,0.12) !important;
+  color: #111111 !important;
+  fill: #111111 !important;
+}
+
+body.theme-light #meetingProposalPage,
+body.theme-light #meetingProposalPage.fullscreen{
+  background: #f4f5f7 !important;
+}
+
+body.theme-light #meetingProposalPage .meeting-page-header{
+  background: linear-gradient(180deg, rgba(244,245,247,0.98), rgba(244,245,247,0.96)) !important;
+}
+
+body.theme-light #meetingProposalPage .meeting-page-title,
+body.theme-light #meetingProposalPage .field-label,
+body.theme-light #meetingProposalPage .section-title,
+body.theme-light #meetingProposalPage .sheet-title,
+body.theme-light #meetingProposalPage .text-input,
+body.theme-light #meetingProposalPage select.text-input,
+body.theme-light #meetingProposalPage textarea.text-input,
+body.theme-light #meetingProposalPage input,
+body.theme-light #meetingProposalPage textarea,
+body.theme-light #meetingProposalPage select{
+  color: #111111 !important;
+}
+
+body.theme-light #meetingProposalPage .field-label,
+body.theme-light #meetingProposalPage .section-title{
+  opacity: 1 !important;
+}
+
+body.theme-light #meetingProposalPage .text-input::placeholder,
+body.theme-light #meetingProposalPage input::placeholder,
+body.theme-light #meetingProposalPage textarea::placeholder{
+  color: rgba(17,17,17,0.44) !important;
+}
+
+body.theme-light #meetingProposalPage .meeting-card--form,
+body.theme-light #meetingProposalPage .meeting-card,
+body.theme-light #meetingProposalPage .card{
+  background: #ffffff !important;
+  border-color: rgba(0,0,0,0.10) !important;
+}
+
+/* Actual edit/delete buttons in calendar day sheet */
+body.theme-light .busy-actions .busy-action{
+  color: #111111 !important;
+  background: rgba(0,0,0,0.06) !important;
+  border: 1px solid rgba(0,0,0,0.12) !important;
+}
+body.theme-light .busy-actions .busy-action:hover{
+  background: rgba(0,0,0,0.10) !important;
+}
+body.theme-light .busy-actions .busy-action:active{
+  background: rgba(0,0,0,0.14) !important;
+}
+/* === LIGHT THEME: calendar slight mint tint === */
+body.theme-light .app{
+  background:
+    radial-gradient(900px 600px at 20% 0%, rgba(103,216,192,0.035), transparent 55%),
+    radial-gradient(800px 600px at 90% 25%, rgba(103,216,192,0.045), transparent 58%),
+    linear-gradient(180deg, #f7fbfa, #f2f8f6) !important;
+}
+
+body.theme-light .calendar{
+  background: transparent !important;
+}
+
+body.theme-light .day{
+  background: linear-gradient(
+    180deg,
+    rgba(103,216,192,0.03),
+    rgba(0,0,0,0.015)
+  ) !important;
+  border-color: rgba(0,0,0,0.085) !important;
+}
+
+body.theme-light .day::after{
+  background: radial-gradient(
+    circle at 20% 20%,
+    rgba(103,216,192,0.05),
+    transparent 55%
+  ) !important;
+  opacity: .45 !important;
+}
+
+body.theme-light .month-grid{
+  background: transparent !important;
+}
