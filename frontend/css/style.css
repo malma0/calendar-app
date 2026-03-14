@@ -2985,3 +2985,23 @@ body.theme-light .proposal-member-state,
 body.theme-light .window-item-sub{
   color: rgba(17,17,17,0.62) !important;
 }
+
+
+/* FIX: edit/delete buttons visible in light theme */
+body.theme-light .event-actions button,
+body.theme-light .event-card button,
+body.theme-light .event-card-actions button,
+body.theme-light .event-edit,
+body.theme-light .event-delete,
+body.theme-light .icon-btn{
+  color:#000 !important;
+  fill:#000 !important;
+  background:rgba(0,0,0,0.06) !important;
+  border:1px solid rgba(0,0,0,0.12) !important;
+}
+
+body.theme-light .event-actions button:hover,
+body.theme-light .event-card-actions button:hover,
+body.theme-light .icon-btn:hover{
+  background:rgba(0,0,0,0.12) !important;
+}

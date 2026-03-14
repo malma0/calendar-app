@@ -128,13 +128,13 @@ function bindActions(){
       const proposalId = Number(card?.dataset.proposalId || 0);
       const voteValue = btn.dataset.vote;
       if (!proposalId || !voteValue) return;
-      try{ await vote(proposalId, voteValue); await loadByProposalId(proposalId); document.dispatchEvent(new CustomEvent('meeting:updated')); }catch(err){ alert(err.message || 'Не удалось сохранить голос'); }
+      try{ await vote(proposalId, voteValue); await loadByProposalId(proposalId); document.dispatchEvent(new CustomEvent('meeting:updated')); }catch(err){ console.warn(err.message || 'Не удалось сохранить голос'); }
     });
   });
   list.querySelectorAll('[data-edit-proposal]').forEach(btn => btn.addEventListener('click', () => { closeSheet(); document.dispatchEvent(new CustomEvent('meeting:edit-proposal', { detail: { proposalId: Number(btn.dataset.editProposal) } })); }));
   list.querySelectorAll('[data-edit-event]').forEach(btn => btn.addEventListener('click', () => { closeSheet(); document.dispatchEvent(new CustomEvent('meeting:edit-event', { detail: { eventId: Number(btn.dataset.editEvent) } })); }));
-  list.querySelectorAll('[data-delete-proposal]').forEach(btn => btn.addEventListener('click', async () => { const id = Number(btn.dataset.deleteProposal); if (!id || !confirm('Удалить сбор?')) return; try{ await deleteProposal(id); closeSheet(); document.dispatchEvent(new CustomEvent('meeting:updated')); }catch(err){ alert(err.message || 'Не удалось удалить сбор'); } }));
-  list.querySelectorAll('[data-delete-event]').forEach(btn => btn.addEventListener('click', async () => { const id = Number(btn.dataset.deleteEvent); if (!id || !confirm('Удалить событие?')) return; try{ await deleteEvent(id); closeSheet(); document.dispatchEvent(new CustomEvent('meeting:updated')); }catch(err){ alert(err.message || 'Не удалось удалить событие'); } }));
+  list.querySelectorAll('[data-delete-proposal]').forEach(btn => btn.addEventListener('click', async () => { const id = Number(btn.dataset.deleteProposal); if (!id) return; try{ await deleteProposal(id); closeSheet(); document.dispatchEvent(new CustomEvent('meeting:updated')); }catch(err){ console.warn(err.message || 'Не удалось удалить сбор'); } }));
+  list.querySelectorAll('[data-delete-event]').forEach(btn => btn.addEventListener('click', async () => { const id = Number(btn.dataset.deleteEvent); if (!id) return; try{ await deleteEvent(id); closeSheet(); document.dispatchEvent(new CustomEvent('meeting:updated')); }catch(err){ console.warn(err.message || 'Не удалось удалить событие'); } }));
 }
 
 export function initProposalDetails(){

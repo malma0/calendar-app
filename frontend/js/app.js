@@ -210,8 +210,11 @@ function pad2(n){ return String(n).padStart(2,"0"); }
       return;
     }
     try{
-      const url = `${API_ORIGIN}/api/events?group_id=${gid}&year=${y}&month=${m}`;
-      const res = await fetch(url, { headers: { ...authHeaders() } });
+      const url = `${API_ORIGIN}/api/events?group_id=${gid}&year=${y}&month=${m}&_=${Date.now()}`;
+      const res = await fetch(url, {
+        headers: { ...authHeaders(), "Cache-Control": "no-cache" },
+        cache: "no-store"
+      });
       if(res.ok) state.eventsCache = await res.json();
       else state.eventsCache = [];
     }catch{ state.eventsCache = []; }
@@ -770,8 +773,8 @@ function createDayCell(date, otherMonth){
           });
           row.querySelector('[data-action="delete"]')?.addEventListener("click", async (e) => {
             e.stopPropagation();
-            const ok = window.confirm("Уверены что хотите удалить событие?");
-            if(!ok) return;
+            // native confirm removed to avoid Safari system dialogs
+
             try{
               await fetch(`${API_ORIGIN}/api/events/${ev.id}`, { method: "DELETE", headers: { ...authHeaders() } });
               deleteEventByIdLocal(ev.id);
@@ -823,36 +826,61 @@ function createDayCell(date, otherMonth){
 
     if(!title){ $("eventTitle").focus(); return; }
     if(!date){ $("eventDate").focus(); return; }
-    if(!groupId){ alert("Сначала выберите группу"); return; }
+    if(!groupId){ console.warn("Сначала выберите группу"); return; }
     if(start && end && start >= end){
-      alert("Конец должен быть позже начала.");
+      console.warn("Конец должен быть позже начала.");
       $("eventTimeEnd").focus();
       return;
     }
 
     const payload = { title, date, start_time: start, end_time: end, group_id: groupId };
+    const dateObj = new Date(`${date}T00:00:00`);
+    const saveBtn = $("saveEventBtn");
+    const originalBtnText = saveBtn?.textContent || "Сохранить";
+    if(saveBtn){
+      saveBtn.disabled = true;
+      saveBtn.textContent = "Сохраняем...";
+    }
+
     try{
+      let savedEvent = null;
+
       if(state.editingEventId){
-        await fetch(`${API_ORIGIN}/api/events/${state.editingEventId}`, {
+        const res = await fetch(`${API_ORIGIN}/api/events/${state.editingEventId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json", ...authHeaders() },
           body: JSON.stringify({ title, date, start_time: start, end_time: end })
         });
+        if(!res.ok) throw new Error(`HTTP ${res.status}`);
+        savedEvent = await res.json();
+        updateEventById(state.editingEventId, savedEvent);
         state.editingEventId = null;
       } else {
-        await fetch(`${API_ORIGIN}/api/events`, {
+        const res = await fetch(`${API_ORIGIN}/api/events`, {
           method: "POST",
           headers: { "Content-Type": "application/json", ...authHeaders() },
           body: JSON.stringify(payload)
         });
+        if(!res.ok) throw new Error(`HTTP ${res.status}`);
+        savedEvent = await res.json();
+        addEvent(savedEvent);
       }
-      await fetchMembers();
-      await fetchEventsForCurrentView();
+
       closeAllSheets();
       render();
-      openBusySheet(new Date(date));
+      openBusySheet(dateObj);
+
+      await fetchMembers();
+      await fetchEventsForCurrentView();
+      render();
+      openBusySheet(dateObj);
     }catch(err){
-      alert("Не удалось сохранить событие");
+      console.warn("Не удалось сохранить событие", err);
+    }finally{
+      if(saveBtn){
+        saveBtn.disabled = false;
+        saveBtn.textContent = originalBtnText;
+      }
     }
   }
 

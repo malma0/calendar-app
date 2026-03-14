@@ -226,7 +226,7 @@ export async function initProfile() {
       document.dispatchEvent(new CustomEvent("profile:updated", { detail: { me } }));
       closeProfileEdit();
     }catch(err){
-      alert(err?.message || "Не удалось сохранить профиль");
+      console.warn(err?.message || "Не удалось сохранить профиль");
     }
   });
 

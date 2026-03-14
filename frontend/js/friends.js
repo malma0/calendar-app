@@ -286,7 +286,7 @@ async function processInviteFromUrl(){
     const url = new URL(location.href);
     url.searchParams.delete("invite");
     history.replaceState({}, "", url.toString());
-    alert(`Вы присоединились к группе «${group.name}».`);
+    console.warn(`Вы присоединились к группе «${group.name}».`);
   }catch(err){
     console.warn(err);
   }
@@ -321,7 +321,7 @@ function bindUI(){
       openSheet("inviteSheet");
     }catch(err){
       console.warn(err);
-      alert("Не удалось получить ссылку приглашения");
+      console.warn("Не удалось получить ссылку приглашения");
     }
   });
 
@@ -354,7 +354,7 @@ function bindUI(){
       await renderMeetingProposalsBlock();
       closeAllSheets();
     }catch(err){
-      alert(err?.message || "Не удалось создать группу");
+      console.warn(err?.message || "Не удалось создать группу");
     }
   });
 
@@ -368,7 +368,7 @@ function bindUI(){
       setActiveGroup(state.groups.find(g => g.id === updated.id));
       await renderMeetingProposalsBlock();
     }catch(err){
-      alert(err?.message || "Не удалось сохранить название");
+      console.warn(err?.message || "Не удалось сохранить название");
     }
   });
 
@@ -392,14 +392,14 @@ function bindUI(){
       await renderMeetingProposalsBlock();
       document.dispatchEvent(new CustomEvent("group:color-updated", { detail: { groupId: state.activeGroup.id, color } }));
     }catch(err){
-      alert(err?.message || "Не удалось сохранить цвет");
+      console.warn(err?.message || "Не удалось сохранить цвет");
     }
   });
 
   $("leaveGroupBtn")?.addEventListener("click", async () => {
     if(!state.activeGroup) return;
-    const ok = window.confirm(state.me && state.activeGroup && state.activeGroup.owner_id === state.me.id ? "Выйти из группы? Если участники останутся, права админа перейдут одному из них." : "Выйти из группы?");
-    if(!ok) return;
+    // native confirm removed to avoid Safari system dialogs
+
     try{
       await leaveGroup(state.activeGroup.id);
       await refreshGroups();
@@ -407,14 +407,14 @@ function bindUI(){
       await renderMeetingProposalsBlock();
       closeAllSheets();
     }catch(err){
-      alert(err?.message || "Не удалось выйти из группы");
+      console.warn(err?.message || "Не удалось выйти из группы");
     }
   });
 
   $("deleteGroupBtn")?.addEventListener("click", async () => {
     if(!state.activeGroup) return;
-    const ok = window.confirm("Удалить группу? Это действие нельзя отменить.");
-    if(!ok) return;
+    // native confirm removed to avoid Safari system dialogs
+
     try{
       await deleteGroup(state.activeGroup.id);
       await refreshGroups();
@@ -422,7 +422,7 @@ function bindUI(){
       await renderMeetingProposalsBlock();
       closeAllSheets();
     }catch(err){
-      alert(err?.message || "Не удалось удалить группу");
+      console.warn(err?.message || "Не удалось удалить группу");
     }
   });
 

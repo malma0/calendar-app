@@ -4,6 +4,7 @@ import json
 import random
 import secrets
 import os
+import threading
 
 try:
     from pywebpush import webpush, WebPushException
@@ -176,6 +177,19 @@ def _send_push_to_users(user_ids: list[int], title: str, body: str, url: str = "
         with engine.begin() as conn:
             conn.execute(text(f"DELETE FROM push_subscriptions WHERE id IN ({','.join(str(int(x)) for x in stale)})"))
 
+
+
+
+def _send_push_to_users_async(user_ids: list[int], title: str, body: str, url: str = "/", tag: str = "opentime") -> None:
+    try:
+        thread = threading.Thread(
+            target=_send_push_to_users,
+            args=(list(user_ids or []), title, body, url, tag),
+            daemon=True,
+        )
+        thread.start()
+    except Exception:
+        pass
 
 def _ensure_meeting_proposal_tables() -> None:
     try:
@@ -778,7 +792,7 @@ def create_event(event: schemas.EventCreate, current_user: models.User = Depends
         if member_ids:
             group = db.query(models.Group).filter_by(id=event.group_id).first()
             when = f"{event.date.strftime('%d.%m')} · {db_event.start_time.strftime('%H:%M') if db_event.start_time else ''}".strip()
-            _send_push_to_users(member_ids, f"Новый план в группе «{group.name if group else 'OpenTime'}»", f"{current_user.full_name or current_user.username}: {db_event.title} {when}".strip(), "/", "opentime-event")
+            _send_push_to_users_async(member_ids, f"Новый план в группе «{group.name if group else 'OpenTime'}»", f"{current_user.full_name or current_user.username}: {db_event.title} {when}".strip(), "/", "opentime-event")
     return {
         **db_event.__dict__,
         "creator_login": current_user.username,
@@ -1138,7 +1152,7 @@ def create_meeting_proposal(payload: dict, current_user: models.User = Depends(g
     member_ids = [row[0] for row in db.query(models.GroupMember.user_id).filter(models.GroupMember.group_id == group_id, models.GroupMember.user_id != current_user.id).all()]
     if member_ids:
         group = db.query(models.Group).filter_by(id=group_id).first()
-        _send_push_to_users(member_ids, f"Новый сбор в группе «{group.name if group else 'OpenTime'}»", f"{current_user.full_name or current_user.username}: {title} · {parsed_date.strftime('%d.%m')} {parsed_start.strftime('%H:%M')}–{parsed_end.strftime('%H:%M')}", "/", "opentime-proposal")
+        _send_push_to_users_async(member_ids, f"Новый сбор в группе «{group.name if group else 'OpenTime'}»", f"{current_user.full_name or current_user.username}: {title} · {parsed_date.strftime('%d.%m')} {parsed_start.strftime('%H:%M')}–{parsed_end.strftime('%H:%M')}", "/", "opentime-proposal")
 
     created = db.execute(text("""
         SELECT mp.*,

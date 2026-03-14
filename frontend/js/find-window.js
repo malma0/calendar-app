@@ -121,7 +121,7 @@ function renderProposalList(list){
         await loadProposals();
         document.dispatchEvent(new CustomEvent('meeting:updated'));
       } catch (err) {
-        alert(err.message || 'Не удалось сохранить голос');
+        console.warn(err.message || 'Не удалось сохранить голос');
       }
     });
   });
@@ -243,17 +243,17 @@ export function initFindWindow(){
     try {
       await openMeetingPlanner();
     } catch (err) {
-      alert(err.message || 'Не удалось открыть экран встречи');
+      console.warn(err.message || 'Не удалось открыть экран встречи');
     }
   });
   $("closeFreeWindow")?.addEventListener('click', closePlanner);
   document.addEventListener('meeting:edit-proposal', e => {
     const proposalId = Number(e.detail?.proposalId || 0);
-    if (proposalId) openMeetingProposalEditor(proposalId).catch(err => alert(err.message || 'Не удалось открыть редактирование'));
+    if (proposalId) openMeetingProposalEditor(proposalId).catch(err => console.warn(err.message || 'Не удалось открыть редактирование'));
   });
   document.addEventListener('meeting:edit-event', e => {
     const eventId = Number(e.detail?.eventId || 0);
-    if (eventId) openMeetingEventEditor(eventId).catch(err => alert(err.message || 'Не удалось открыть редактирование'));
+    if (eventId) openMeetingEventEditor(eventId).catch(err => console.warn(err.message || 'Не удалось открыть редактирование'));
   });
   $("meetingGroupSelect")?.addEventListener('change', async e => {
     selectedGroupId = e.target.value;
@@ -264,7 +264,7 @@ export function initFindWindow(){
     try {
       await saveMeetingForm();
     } catch (err) {
-      alert(err.message || 'Не удалось предложить встречу');
+      console.warn(err.message || 'Не удалось предложить встречу');
     }
   });
   document.addEventListener('meeting:updated', () => loadProposals().catch(() => {}));
