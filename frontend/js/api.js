@@ -1,7 +1,45 @@
-export const API_BASE = "/api";
+const isLocalDev =
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1" ||
+  window.location.hostname.startsWith("192.168.");
+
+const localApiHost =
+  window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+    ? "localhost"
+    : window.location.hostname;
+
+export const API_BASE = isLocalDev
+  ? `http://${localApiHost}:8080/api`
+  : "/api";
 
 const TOKEN_KEY = "auth_token";
 const LEGACY_TOKEN_KEYS = ["auth_token", "access_token", "token", "jwt", "bearer_token", "opentime_token"];
+
+function extractErrorMessage(data, fallback = "Ошибка"){
+  if (!data) return fallback;
+  if (typeof data === "string") return data;
+  if (typeof data.detail === "string") return data.detail;
+
+  if (Array.isArray(data.detail)) {
+    return data.detail
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (item?.msg) return item.msg;
+        try { return JSON.stringify(item); } catch { return "Ошибка"; }
+      })
+      .join("; ");
+  }
+
+  if (data.detail && typeof data.detail === "object") {
+    if (typeof data.detail.msg === "string") return data.detail.msg;
+    try { return JSON.stringify(data.detail); } catch {}
+  }
+
+  if (typeof data.message === "string") return data.message;
+
+  try { return JSON.stringify(data); } catch {}
+  return fallback;
+}
 
 export function getToken(){
   for(const key of LEGACY_TOKEN_KEYS){
@@ -47,7 +85,7 @@ export async function apiFetch(path, { method="GET", body, headers={} } = {}){
     let msg = `HTTP ${res.status}`;
     try{
       const data = await res.json();
-      if(data?.detail) msg = data.detail;
+      msg = extractErrorMessage(data, msg);
     }catch{}
     throw new Error(msg);
   }
@@ -69,7 +107,10 @@ export async function login(identifier, password, persist = true){
 
   if(!res.ok){
     let msg = `HTTP ${res.status}`;
-    try{ const data = await res.json(); if(data?.detail) msg = data.detail; }catch{}
+    try{
+      const data = await res.json();
+      msg = extractErrorMessage(data, msg);
+    }catch{}
     throw new Error(msg);
   }
 
