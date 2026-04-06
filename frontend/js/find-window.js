@@ -143,7 +143,7 @@ function updateMeetingTitlePlaceholder(){
   const input = $("meetingTitle");
   const group = getSelectedGroup();
   if (!input) return;
-  input.placeholder = `Например: Сбор группы ${group?.name || ''}`.trim();
+  input.placeholder = `Друзья ${group?.name || ''}`.trim();
 }
 
 function renderGroupSelect(){
