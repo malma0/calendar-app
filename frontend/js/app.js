@@ -7,8 +7,14 @@
   function getAuthToken(){
     return localStorage.getItem("auth_token") || sessionStorage.getItem("auth_token") || "";
   }
-  const API_PORT = 8080;
-  const API_ORIGIN = `${window.location.protocol}//${window.location.hostname}:${API_PORT}`;
+  const isLocalDev =
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1" ||
+    window.location.hostname.startsWith("192.168.");
+
+  const API_ORIGIN = isLocalDev
+    ? `${window.location.protocol}//${window.location.hostname}:8080`
+    : window.location.origin;
   function authHeaders(){
     const t = getAuthToken();
     return t ? { "Authorization": `Bearer ${t}` } : {};
