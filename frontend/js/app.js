@@ -191,7 +191,13 @@ function pad2(n){ return String(n).padStart(2,"0"); }
   async function fetchMembers(){
     const gid = currentGroupId();
     if(!gid){
-      state.membersCache = [];
+      state.membersCache = state.me ? [{
+        id: state.me.id,
+        login: state.me.username || "me",
+        name: state.me.full_name || state.me.username || "Вы",
+        color: state.me.color || "#007AFF",
+        avatar: state.me.avatar || null,
+      }] : [];
       return;
     }
     try{
@@ -205,12 +211,10 @@ function pad2(n){ return String(n).padStart(2,"0"); }
     const gid = currentGroupId();
     const y = state.currentMonth.getFullYear();
     const m = state.currentMonth.getMonth() + 1;
-    if(!gid){
-      state.eventsCache = [];
-      return;
-    }
     try{
-      const url = `${API_ORIGIN}/api/events?group_id=${gid}&year=${y}&month=${m}&_=${Date.now()}`;
+      const params = new URLSearchParams({ year: String(y), month: String(m), _: String(Date.now()) });
+      if(gid) params.set("group_id", String(gid));
+      const url = `${API_ORIGIN}/api/events?${params.toString()}`;
       const res = await fetch(url, {
         headers: { ...authHeaders(), "Cache-Control": "no-cache" },
         cache: "no-store"
@@ -826,14 +830,14 @@ function createDayCell(date, otherMonth){
 
     if(!title){ $("eventTitle").focus(); return; }
     if(!date){ $("eventDate").focus(); return; }
-    if(!groupId){ console.warn("Сначала выберите группу"); return; }
     if(start && end && start >= end){
       console.warn("Конец должен быть позже начала.");
       $("eventTimeEnd").focus();
       return;
     }
 
-    const payload = { title, date, start_time: start, end_time: end, group_id: groupId };
+    const payload = { title, date, start_time: start, end_time: end };
+    if(groupId) payload.group_id = groupId;
     const dateObj = new Date(`${date}T00:00:00`);
     const saveBtn = $("saveEventBtn");
     const originalBtnText = saveBtn?.textContent || "Сохранить";
@@ -851,7 +855,11 @@ function createDayCell(date, otherMonth){
           headers: { "Content-Type": "application/json", ...authHeaders() },
           body: JSON.stringify({ title, date, start_time: start, end_time: end })
         });
-        if(!res.ok) throw new Error(`HTTP ${res.status}`);
+        if(!res.ok){
+          let msg = `HTTP ${res.status}`;
+          try{ const data = await res.json(); if(data?.detail) msg = data.detail; }catch{}
+          throw new Error(msg);
+        }
         savedEvent = await res.json();
         updateEventById(state.editingEventId, savedEvent);
         state.editingEventId = null;
@@ -861,7 +869,11 @@ function createDayCell(date, otherMonth){
           headers: { "Content-Type": "application/json", ...authHeaders() },
           body: JSON.stringify(payload)
         });
-        if(!res.ok) throw new Error(`HTTP ${res.status}`);
+        if(!res.ok){
+          let msg = `HTTP ${res.status}`;
+          try{ const data = await res.json(); if(data?.detail) msg = data.detail; }catch{}
+          throw new Error(msg);
+        }
         savedEvent = await res.json();
         addEvent(savedEvent);
       }
@@ -876,6 +888,7 @@ function createDayCell(date, otherMonth){
       openBusySheet(dateObj);
     }catch(err){
       console.warn("Не удалось сохранить событие", err);
+      alert(`Не удалось сохранить событие: ${err?.message || err}`);
     }finally{
       if(saveBtn){
         saveBtn.disabled = false;

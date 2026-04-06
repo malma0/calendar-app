@@ -386,6 +386,39 @@ def _is_proposal_event(ev) -> bool:
 
 
 
+
+
+PERSONAL_GROUP_PREFIX = "__personal__:"
+
+def _personal_group_name(user_id: int) -> str:
+    return f"{PERSONAL_GROUP_PREFIX}{user_id}"
+
+def _is_personal_group(group) -> bool:
+    return bool(group) and str(getattr(group, "name", "") or "").startswith(PERSONAL_GROUP_PREFIX)
+
+def _ensure_personal_group(db: Session, user: models.User):
+    name = _personal_group_name(user.id)
+    group = db.query(models.Group).filter(models.Group.name == name, models.Group.owner_id == user.id).first()
+    if not group:
+        group = models.Group(
+            name=name,
+            description="Личное пространство пользователя",
+            invite_code=secrets.token_hex(4).upper(),
+            owner_id=user.id,
+            created_at=datetime.utcnow(),
+        )
+        db.add(group)
+        db.commit()
+        db.refresh(group)
+    membership = db.query(models.GroupMember).filter_by(group_id=group.id, user_id=user.id).first()
+    if not membership:
+        membership = models.GroupMember(user_id=user.id, group_id=group.id, color=user.color)
+        db.add(membership)
+        db.commit()
+        db.refresh(group)
+    return group, membership
+
+
 def _serialize_user(user):
     return {
         "id": user.id,
@@ -481,6 +514,7 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
+    _ensure_personal_group(db, db_user)
     return db_user
 
 
@@ -614,6 +648,8 @@ def get_my_groups(current_user: models.User = Depends(get_current_user), db: Ses
     )
     result = []
     for group, member_color in groups:
+        if _is_personal_group(group):
+            continue
         result.append(_serialize_group(group, member_color, current_user.color or "#007AFF"))
     return result
 
@@ -769,9 +805,15 @@ def update_my_color(payload: schemas.UserColorUpdate, current_user: models.User 
 
 @app.post("/api/events", response_model=schemas.EventResponse)
 def create_event(event: schemas.EventCreate, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    allowed = db.query(models.GroupMember).filter_by(group_id=event.group_id, user_id=current_user.id).first()
-    if not allowed:
-        raise HTTPException(status_code=404, detail="Группа не найдена или вы не состоите в ней")
+    target_group_id = event.group_id
+    allowed = None
+    if target_group_id is not None:
+        allowed = db.query(models.GroupMember).filter_by(group_id=target_group_id, user_id=current_user.id).first()
+        if not allowed:
+            raise HTTPException(status_code=404, detail="Группа не найдена или вы не состоите в ней")
+    else:
+        personal_group, allowed = _ensure_personal_group(db, current_user)
+        target_group_id = personal_group.id
     if event.start_time and event.end_time and event.start_time >= event.end_time:
         raise HTTPException(status_code=400, detail="end_time должно быть позже start_time")
     is_proposal = str(event.title or '').startswith('ВСТРЕЧА ·') or str(event.title or '').startswith('📌 ')
@@ -782,7 +824,7 @@ def create_event(event: schemas.EventCreate, current_user: models.User = Depends
         start_time=event.start_time,
         end_time=event.end_time,
         user_id=current_user.id,
-        group_id=event.group_id,
+        group_id=target_group_id,
     )
     db.add(db_event)
     db.commit()
@@ -852,6 +894,9 @@ def delete_event(event_id: int, current_user: models.User = Depends(get_current_
 
 @app.get("/api/events", response_model=List[schemas.EventResponse])
 def get_events(group_id: Optional[int] = Query(default=None), year: Optional[int] = Query(default=None, ge=1900, le=3000), month: Optional[int] = Query(default=None, ge=1, le=12), current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if group_id is None:
+        personal_group, _ = _ensure_personal_group(db, current_user)
+        group_id = personal_group.id
     q = (
         db.query(models.Event, models.User, models.GroupMember.color.label("member_color"))
         .join(models.GroupMember, models.GroupMember.group_id == models.Event.group_id)

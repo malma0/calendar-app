@@ -83,7 +83,7 @@ class EventBase(BaseModel):
 
 
 class EventCreate(EventBase):
-    group_id: int
+    group_id: Optional[int] = None
 
 
 class EventUpdate(BaseModel):
