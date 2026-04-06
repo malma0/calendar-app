@@ -1,6 +1,4 @@
-const API_PORT = 8080;
-const API_ORIGIN = `${window.location.protocol}//${window.location.hostname}:${API_PORT}`;
-export const API_BASE = `${API_ORIGIN}/api`;
+export const API_BASE = "/api";
 
 const TOKEN_KEY = "auth_token";
 const LEGACY_TOKEN_KEYS = ["auth_token", "access_token", "token", "jwt", "bearer_token", "opentime_token"];
@@ -104,6 +102,7 @@ export function joinByInvite(inviteCode){ return apiFetch(`/invite/${encodeURICo
 export function updateGroupColor(groupId, color){ return apiFetch(`/groups/${groupId}/my-color`, { method:'PUT', body:{ color } }); }
 export function leaveGroup(groupId){ return apiFetch(`/groups/${groupId}/leave`, { method:'POST' }); }
 export function deleteGroup(groupId){ return apiFetch(`/groups/${groupId}`, { method:'DELETE' }); }
+
 export function getEvents(groupId, year, month){
   const q = new URLSearchParams();
   if(groupId) q.set('group_id', groupId);
@@ -111,6 +110,7 @@ export function getEvents(groupId, year, month){
   if(month) q.set('month', month);
   return apiFetch(`/events${q.toString() ? `?${q.toString()}` : ''}`);
 }
+
 export function createEvent(payload){ return apiFetch('/events', { method:'POST', body: payload }); }
 export function updateEvent(eventId, payload){ return apiFetch(`/events/${eventId}`, { method:'PUT', body: payload }); }
 export function deleteEvent(eventId){ return apiFetch(`/events/${eventId}`, { method:'DELETE' }); }

@@ -13,8 +13,11 @@ except Exception:
     WebPushException = Exception
 from datetime import date as dt_date, datetime, timedelta
 from typing import List, Optional
+from pathlib import Path
 
 from fastapi import FastAPI, Depends, HTTPException, status, Query, Body
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import text
@@ -479,6 +482,7 @@ app.add_middleware(
         "http://127.0.0.1:5500",
         "http://192.168.0.234:5500",
         "http://192.168.0.214:5500",
+        "https://opentime-8src.onrender.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -1347,11 +1351,38 @@ def delete_meeting_proposal(proposal_id: int, current_user: models.User = Depend
     return {"detail": "Предложение встречи удалено"}
 
 
-@app.get("/")
-def read_root():
-    return {"message": "Календарь совместных планов API работает!"}
-
-
 @app.get("/api/health")
 def health_check():
     return {"status": "healthy", "database": "SQLite"}
+
+
+BASE_DIR = Path(__file__).resolve().parent
+FRONTEND_DIR = BASE_DIR.parent / "frontend"
+
+if FRONTEND_DIR.exists():
+    app.mount("/css", StaticFiles(directory=FRONTEND_DIR / "css"), name="css")
+    app.mount("/js", StaticFiles(directory=FRONTEND_DIR / "js"), name="js")
+    app.mount("/icons", StaticFiles(directory=FRONTEND_DIR / "icons"), name="icons")
+
+    manifest_file = FRONTEND_DIR / "manifest.json"
+    if manifest_file.exists():
+        @app.get("/manifest.json")
+        async def manifest():
+            return FileResponse(manifest_file)
+
+    sw_file = FRONTEND_DIR / "sw.js"
+    if sw_file.exists():
+        @app.get("/sw.js")
+        async def service_worker():
+            return FileResponse(sw_file)
+
+    @app.get("/")
+    async def serve_index():
+        return FileResponse(FRONTEND_DIR / "index.html")
+
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        file_path = FRONTEND_DIR / full_path
+        if file_path.exists() and file_path.is_file():
+            return FileResponse(file_path)
+        return FileResponse(FRONTEND_DIR / "index.html")
